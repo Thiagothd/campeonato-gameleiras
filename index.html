@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#0a3d2b">
+  <title>Campeonato Municipal de Futebol de Gameleiras</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Anton&family=Barlow+Condensed:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/css/estilo.css">
+</head>
+<body>
+
+  <!-- ===================== TOPO ===================== -->
+  <header class="cabecalho">
+    <div class="cabecalho-glow"></div>
+    <div class="cabecalho-conteudo">
+      <div id="camp-logo" class="camp-logo"></div>
+      <div class="cabecalho-textos">
+        <p class="camp-eyebrow"><span id="camp-cidade">Gameleiras</span> · <span id="camp-temporada">Temporada 2026</span></p>
+        <h1 id="camp-nome">Campeonato Municipal de Futebol</h1>
+        <p id="camp-slogan" class="camp-slogan">Muito além dos 90 minutos</p>
+      </div>
+    </div>
+  </header>
+
+  <!-- ===================== ABAS ===================== -->
+  <nav class="abas">
+    <div class="abas-inner">
+      <button class="aba-btn ativo" data-alvo="painel-classificacao"><span>Classificação</span></button>
+      <button class="aba-btn" data-alvo="painel-jogos"><span>Jogos</span></button>
+      <button class="aba-btn" data-alvo="painel-times"><span>Times</span></button>
+    </div>
+  </nav>
+
+  <main class="conteudo">
+
+    <!-- ===================== CLASSIFICAÇÃO ===================== -->
+    <section id="painel-classificacao" class="painel ativo">
+      <div class="secao-titulo">
+        <h2>Classificação</h2>
+        <span class="legenda-zona"><i class="ponto verde"></i> Zona de classificação</span>
+      </div>
+      <div id="grupos-container" class="grupos-container"></div>
+      <div class="legenda-siglas">
+        <span><b>J</b> Jogos</span><span><b>V</b> Vitórias</span><span><b>E</b> Empates</span>
+        <span><b>D</b> Derrotas</span><span><b>GP</b> Gols Pró</span><span><b>GC</b> Gols Contra</span>
+        <span><b>SG</b> Saldo</span><span><b>P</b> Pontos</span>
+      </div>
+    </section>
+
+    <!-- ===================== JOGOS ===================== -->
+    <section id="painel-jogos" class="painel">
+      <div id="filtro-grupos" class="filtro-grupos"></div>
+
+      <div class="jogos-bloco">
+        <h2 class="jogos-titulo"><span class="ponto-live"></span> Próximos Jogos <span class="contador" id="qtd-proximos">0</span></h2>
+        <div id="proximos-jogos" class="jogos-lista"></div>
+      </div>
+
+      <div class="jogos-bloco">
+        <h2 class="jogos-titulo">Resultados <span class="contador" id="qtd-realizados">0</span></h2>
+        <div id="jogos-realizados" class="jogos-lista"></div>
+      </div>
+    </section>
+
+    <!-- ===================== TIMES ===================== -->
+    <section id="painel-times" class="painel">
+      <div class="secao-titulo">
+        <h2>Times Participantes</h2>
+        <span class="contador"><span id="qtd-times">0</span> times</span>
+      </div>
+      <div id="lista-times"></div>
+    </section>
+
+  </main>
+
+  <footer class="rodape">
+    <img src="assets/img/campeonato.webp" alt="" class="rodape-logo" onerror="this.remove()">
+    <p><b>Campeonato Municipal de Futebol de Gameleiras</b></p>
+    <p class="rodape-sub">Futebol une histórias, famílias e gerações.</p>
+  </footer>
+
+  <!-- Botão flutuante do gerenciador -->
+  <button id="btn-gerenciar" class="btn-gerenciar" title="Gerenciar (área restrita)">
+    <span class="cadeado">🔒</span> Gerenciar
+  </button>
+
+  <!-- ===================== MODAL GERENCIADOR ===================== -->
+  <div id="ger-modal" class="ger-modal">
+    <div class="ger-caixa">
+      <header class="ger-topo">
+        <div>
+          <h3>Gerenciador do Campeonato</h3>
+          <p>Cadastre jogos e placares — a tabela atualiza sozinha.</p>
+        </div>
+        <button id="ger-fechar" class="ger-fechar" aria-label="Fechar">✕</button>
+      </header>
+
+      <div class="ger-tabs">
+        <button class="ger-tab ativo" data-ger="jogos">Jogos &amp; Placares</button>
+        <button class="ger-tab" data-ger="times">Times</button>
+        <button class="ger-tab" data-ger="exportar">Publicar</button>
+      </div>
+
+      <div id="ger-aviso" class="ger-aviso">
+        <span>⚠️ Há alterações salvas só neste navegador. Para todo mundo ver, use a aba <b>Publicar</b>.</span>
+      </div>
+
+      <div class="ger-corpo">
+        <!-- Jogos -->
+        <div class="ger-secao ativo" data-ger="jogos">
+          <div class="ger-secao-top">
+            <h4>Jogos cadastrados</h4>
+            <button class="btn btn--verde" data-acao="novo-jogo">+ Novo jogo</button>
+          </div>
+          <div id="ger-jogos-lista" class="ger-lista"></div>
+          <div id="ger-form-jogo" class="ger-form"></div>
+        </div>
+
+        <!-- Times -->
+        <div class="ger-secao" data-ger="times">
+          <div class="ger-secao-top">
+            <h4>Times</h4>
+            <button class="btn btn--verde" data-acao="novo-time">+ Novo time</button>
+          </div>
+          <div id="ger-times-lista" class="ger-lista"></div>
+          <div id="ger-form-time" class="ger-form"></div>
+        </div>
+
+        <!-- Exportar -->
+        <div class="ger-secao" data-ger="exportar">
+          <div class="ger-publicar">
+            <h4>Publicar as alterações</h4>
+            <p>Tudo o que você cadastra fica salvo <b>neste navegador</b>. Para que todos vejam
+               no site publicado, baixe o arquivo atualizado e substitua o
+               <code>assets/js/dados.js</code> no seu site.</p>
+            <button class="btn btn--dourado" data-acao="exportar">⬇️ Baixar dados.js atualizado</button>
+            <hr>
+            <p class="ger-perigo-txt">Quer descartar as alterações deste navegador e voltar aos dados publicados?</p>
+            <button class="btn btn--ghost" data-acao="resetar">Descartar alterações locais</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="assets/js/dados.js"></script>
+  <script src="assets/js/app.js"></script>
+</body>
+</html>

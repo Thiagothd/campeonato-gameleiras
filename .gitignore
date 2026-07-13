@@ -1,0 +1,15 @@
+# Imagens originais pesadas (usamos as versões .webp otimizadas)
+assets/img/Esporte/
+assets/img/Esporte.zip
+assets/img/*.png
+assets/img/*.jpg
+assets/img/*.jpeg
+assets/img/times/*.png
+assets/img/times/*.jpg
+assets/img/times/*.jpeg
+
+# Arquivo de teste (gerado)
+campeonato-teste.html
+
+node_modules/
+.DS_Store
