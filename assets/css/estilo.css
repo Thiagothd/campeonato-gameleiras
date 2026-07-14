@@ -46,6 +46,7 @@ body {
   background-attachment: fixed;
   -webkit-font-smoothing: antialiased;
   line-height: 1.5;
+  overflow-x: hidden;            /* nada vaza a largura no celular */
 }
 body.sem-scroll { overflow: hidden; }
 
@@ -95,16 +96,19 @@ img { max-width: 100%; display: block; }
   font-size: .82rem;
   color: var(--dourado-claro);
 }
+.cabecalho-textos { min-width: 0; flex: 1; }
 #camp-nome {
   margin: 0;
   font-family: var(--fonte-titulo);
   font-weight: 400;
   line-height: .96;
   letter-spacing: .01em;
-  font-size: clamp(1.7rem, 5.2vw, 3rem);
+  font-size: clamp(1.3rem, 5.6vw, 3rem);
   text-transform: uppercase;
   color: #fff;
   text-shadow: 0 2px 0 rgba(0,0,0,.25);
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 .camp-slogan {
   margin: 8px 0 0;
@@ -551,15 +555,35 @@ img { max-width: 100%; display: block; }
    RESPONSIVO
    ========================================================================= */
 @media (max-width: 560px) {
-  .cabecalho-conteudo { gap: 14px; padding: 20px 16px 24px; }
+  .cabecalho-conteudo { gap: 12px; padding: 18px 14px 22px; }
   .camp-logo { width: 80px; height: 80px; padding: 2px; }
+  .camp-eyebrow { font-size: .72rem; letter-spacing: .12em; }
+  .camp-slogan { font-size: .92rem; }
+
+  .conteudo { padding: 22px 12px 54px; }
+  .abas-inner { gap: 5px; padding: 8px 10px; }
+  .aba-btn { font-size: .78rem; padding: 9px 4px; letter-spacing: .01em; }
+
+  /* tabela cabe sem cortar */
   .tabela .hide-sm { display: none; }
-  .tabela td.col-time, .tabela th.col-time { min-width: 120px; }
-  .time-nome { font-size: .84rem; }
-  .campo-linha { grid-template-columns: 1fr 1fr; }
+  .tabela td.col-time, .tabela th.col-time { min-width: 92px; padding-left: 8px; }
+  .tabela thead th, .tabela tbody td { padding: 8px 3px; }
+  .time-nome { font-size: .82rem; }
+
   .jogos-lista, .grupos-container { grid-template-columns: 1fr; }
+  .grade-times { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+
+  .campo-linha { grid-template-columns: 1fr 1fr; }
   .ger-form-botoes { flex-direction: column; }
-  .btn { width: 100%; }
+  .ger-form-botoes .btn { width: 100%; }
+  .ger-topo { padding: 16px; }
+  .ger-corpo { padding: 14px; }
+  .btn-gerenciar { right: 12px; bottom: 12px; padding: 10px 14px; font-size: .85rem; }
+}
+
+@media (max-width: 380px) {
+  .aba-btn { font-size: .72rem; }
+  .grade-times { grid-template-columns: repeat(2, 1fr); }
 }
 @media (min-width: 900px) {
   .grupos-container { grid-template-columns: repeat(3, 1fr); }
