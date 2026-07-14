@@ -450,6 +450,33 @@ img { max-width: 100%; display: block; }
 .btn-gerenciar:hover { transform: translateY(-2px); }
 .btn-gerenciar .cadeado { font-size: .9rem; }
 
+.status-nuvem {
+  position: fixed; left: 16px; bottom: 16px; z-index: 60;
+  display: inline-flex; align-items: center; gap: 7px;
+  font-family: var(--fonte-cond); font-weight: 600; font-size: .82rem;
+  text-transform: uppercase; letter-spacing: .04em;
+  color: var(--texto-suave);
+  background: rgba(6, 39, 27, .85);
+  border: 1px solid var(--linha-forte);
+  padding: 8px 14px; border-radius: 999px;
+  -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+}
+.status-dot {
+  width: 8px; height: 8px; border-radius: 50%; flex: 0 0 auto;
+  background: var(--texto-fraco);
+}
+.status--conectando .status-dot { background: var(--dourado); animation: pulso-status 1.4s infinite; }
+.status--conectando { color: var(--dourado-claro); }
+.status--ok .status-dot { background: var(--verde-brilho); animation: pulso-status 2.2s infinite; }
+.status--ok { color: var(--verde-brilho); }
+.status--erro .status-dot { background: var(--vermelho); }
+.status--erro { color: #f2a4a6; }
+@keyframes pulso-status {
+  0% { box-shadow: 0 0 0 0 currentColor; opacity: 1; }
+  70% { box-shadow: 0 0 0 6px transparent; opacity: .7; }
+  100% { box-shadow: 0 0 0 0 transparent; opacity: 1; }
+}
+
 .ger-modal {
   position: fixed; inset: 0; z-index: 100; display: none;
   align-items: flex-start; justify-content: center;
@@ -491,6 +518,8 @@ img { max-width: 100%; display: block; }
   padding: 10px 12px; border-radius: 10px; font-size: .82rem;
   background: rgba(244,180,26,.12); border: 1px solid rgba(244,180,26,.3); color: var(--dourado-claro);
 }
+.ger-aviso--erro { background: rgba(229,72,77,.14); border-color: rgba(229,72,77,.4); color: #f2a4a6; }
+.ger-aviso--vazio { background: rgba(244,180,26,.12); border-color: rgba(244,180,26,.3); color: var(--dourado-claro); }
 .ger-corpo { padding: 16px; max-height: min(70vh, 640px); overflow-y: auto; }
 .ger-secao { display: none; }
 .ger-secao.ativo { display: block; }
@@ -545,11 +574,22 @@ img { max-width: 100%; display: block; }
 .btn--ghost { background: rgba(255,255,255,.06); color: var(--texto); border: 1px solid var(--linha-forte); }
 .btn--ghost:hover { background: rgba(255,255,255,.12); }
 
-.ger-publicar h4 { margin: 0 0 10px; font-family: var(--fonte-cond); font-weight: 700; font-size: 1.15rem; color: #fff; text-transform: uppercase; }
-.ger-publicar p { font-size: .88rem; color: var(--texto-suave); margin: 0 0 14px; }
-.ger-publicar code { background: rgba(0,0,0,.3); padding: 2px 6px; border-radius: 5px; font-size: .82rem; color: var(--dourado-claro); }
-.ger-publicar hr { border: none; border-top: 1px solid var(--linha); margin: 22px 0 14px; }
-.ger-perigo-txt { font-size: .82rem; color: var(--texto-fraco); }
+.ger-nuvem { display: flex; flex-direction: column; gap: 14px; }
+.ger-nuvem-status-linha {
+  margin: 0; font-size: .9rem; font-weight: 600; color: var(--texto-suave);
+  padding: 10px 12px; background: rgba(255,255,255,.03); border: 1px solid var(--linha);
+  border-radius: 10px;
+}
+.ger-nuvem-card {
+  background: rgba(255,255,255,.03); border: 1px solid var(--linha-forte);
+  border-radius: 12px; padding: 16px;
+}
+.ger-nuvem-card--destaque {
+  background: rgba(244,180,26,.08); border-color: rgba(244,180,26,.35);
+}
+.ger-nuvem-card h4 { margin: 0 0 8px; font-family: var(--fonte-cond); font-weight: 700; font-size: 1.05rem; color: #fff; text-transform: uppercase; }
+.ger-nuvem-card p { font-size: .86rem; color: var(--texto-suave); margin: 0 0 12px; }
+.oculto { display: none; } /* JS troca via .style.display, que tem prioridade sobre esta classe */
 
 /* =========================================================================
    RESPONSIVO
@@ -579,6 +619,7 @@ img { max-width: 100%; display: block; }
   .ger-topo { padding: 16px; }
   .ger-corpo { padding: 14px; }
   .btn-gerenciar { right: 12px; bottom: 12px; padding: 10px 14px; font-size: .85rem; }
+  .status-nuvem { left: 12px; bottom: 12px; padding: 7px 11px; font-size: .72rem; gap: 5px; }
 }
 
 @media (max-width: 380px) {

@@ -1,0 +1,20 @@
+rules_version = '2';
+
+// Regras do banco do Campeonato Municipal de Futebol de Gameleiras.
+// - Qualquer pessoa pode LER (o site público não precisa de senha para ver).
+// - Só quem estiver autenticado (entrou com a senha do Gerenciador) pode ESCREVER.
+// - Tudo o que não for explicitamente liberado aqui fica bloqueado por padrão.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    match /campeonato/dados {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    // Nega qualquer outra coisa no banco (defesa em profundidade).
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

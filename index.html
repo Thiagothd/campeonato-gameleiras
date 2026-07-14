@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Anton&family=Barlow+Condensed:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="assets/css/estilo.css?v=13">
+  <link rel="stylesheet" href="assets/css/estilo.css?v=14">
 </head>
 <body>
 
@@ -82,6 +82,12 @@
     <p class="rodape-sub">Futebol une histórias, famílias e gerações.</p>
   </footer>
 
+  <!-- Indicador de conexão com a nuvem -->
+  <div id="status-nuvem" class="status-nuvem status--conectando">
+    <span class="status-dot"></span>
+    <span id="status-nuvem-texto">Conectando…</span>
+  </div>
+
   <!-- Botão flutuante do gerenciador -->
   <button id="btn-gerenciar" class="btn-gerenciar" title="Gerenciar (área restrita)">
     <span class="cadeado">🔒</span> Gerenciar
@@ -101,11 +107,11 @@
       <div class="ger-tabs">
         <button class="ger-tab ativo" data-ger="jogos">Jogos &amp; Placares</button>
         <button class="ger-tab" data-ger="times">Times</button>
-        <button class="ger-tab" data-ger="exportar">Publicar</button>
+        <button class="ger-tab" data-ger="nuvem">Nuvem</button>
       </div>
 
       <div id="ger-aviso" class="ger-aviso">
-        <span>⚠️ Há alterações salvas só neste navegador. Para todo mundo ver, use a aba <b>Publicar</b>.</span>
+        <span></span>
       </div>
 
       <div class="ger-corpo">
@@ -129,24 +135,37 @@
           <div id="ger-form-time" class="ger-form"></div>
         </div>
 
-        <!-- Exportar -->
-        <div class="ger-secao" data-ger="exportar">
-          <div class="ger-publicar">
-            <h4>Publicar as alterações</h4>
-            <p>Tudo o que você cadastra fica salvo <b>neste navegador</b>. Para que todos vejam
-               no site publicado, baixe o arquivo atualizado e substitua o
-               <code>assets/js/dados.js</code> no seu site.</p>
-            <button class="btn btn--dourado" data-acao="exportar">⬇️ Baixar dados.js atualizado</button>
-            <hr>
-            <p class="ger-perigo-txt">Quer descartar as alterações deste navegador e voltar aos dados publicados?</p>
-            <button class="btn btn--ghost" data-acao="resetar">Descartar alterações locais</button>
+        <!-- Nuvem -->
+        <div class="ger-secao" data-ger="nuvem">
+          <div class="ger-nuvem">
+            <p id="ger-nuvem-status-texto" class="ger-nuvem-status-linha">Conectando à nuvem…</p>
+
+            <div id="ger-nuvem-seed" class="ger-nuvem-card ger-nuvem-card--destaque oculto">
+              <h4>☁️ Banco de dados vazio</h4>
+              <p>Ainda não há dados na nuvem. Envie os times e jogos já cadastrados como base inicial —
+                 depois disso, qualquer alteração feita aqui aparece para todo mundo na hora.</p>
+              <button type="button" class="btn btn--dourado" data-acao="semear">Enviar dados iniciais para a nuvem</button>
+            </div>
+
+            <div class="ger-nuvem-card">
+              <h4>Backup</h4>
+              <p>Baixe uma cópia de segurança dos dados atuais, por precaução.</p>
+              <button type="button" class="btn btn--ghost" data-acao="exportar">⬇️ Baixar backup</button>
+            </div>
+
+            <div class="ger-nuvem-card">
+              <h4>Sessão</h4>
+              <p>Você está com acesso de gerenciador neste aparelho.</p>
+              <button type="button" id="ger-btn-sair" class="btn btn--ghost oculto" data-acao="sair">Sair do modo Gerenciar</button>
+            </div>
           </div>
         </div>
       </div>
     </div>
   </div>
 
-  <script src="assets/js/dados.js?v=13"></script>
-  <script src="assets/js/app.js?v=13"></script>
+  <script defer src="assets/js/dados.js?v=14"></script>
+  <script type="module" async src="assets/js/db.js?v=14"></script>
+  <script defer src="assets/js/app.js?v=14"></script>
 </body>
 </html>

@@ -1,18 +1,17 @@
 /* =========================================================================
    APP — Campeonato Municipal de Futebol de Gameleiras
-   Renderiza classificação por grupo, jogos e times, e controla o
-   painel "Gerenciar" (cadastro de jogos/times com salvamento local).
+   Renderiza classificação por grupo, jogos e times, e controla o painel
+   "Gerenciar". Os dados moram na nuvem (Firebase): quem salvar uma
+   alteração atualiza o site para todo mundo, na hora, em qualquer lugar.
 
    Você normalmente NÃO precisa mexer aqui. Use o botão "Gerenciar" no site.
    ========================================================================= */
 (function () {
   "use strict";
 
-  const LS_KEY = "gameleiras_camp_v1";
   const IMG_TIMES = "assets/img/times/";
-  const CACHE_VER = "13"; // troque quando atualizar imagens (força o navegador a rebaixar)
+  const CACHE_VER = "14"; // troque quando atualizar imagens/CSS/JS (força o navegador a rebaixar)
 
-  // Monta o src do escudo/logo; em data URI (link de teste) devolve direto.
   function comVersao(base) {
     if (!base) return "";
     if (base.indexOf("data:") === 0) return base;
@@ -20,7 +19,14 @@
   }
 
   /* =======================================================================
-     ESTADO  (parte de dados.js; se houver alterações salvas, usa elas)
+     ESTADO
+     -------------------------------------------------------------------------
+     PUBLICADO   = dados de fallback (assets/js/dados.js): usados na largada
+                   (pintura instantânea) e se a nuvem ficar inacessível.
+     STATE       = o que está na tela agora. Vira os dados reais da nuvem
+                   assim que eles chegam, e continua assim.
+     CLOUD_STATE = último estado confirmado pela nuvem — usado para reverter
+                   a tela se um salvamento falhar no meio do caminho.
      ======================================================================= */
   const PUBLICADO = {
     config: JSON.parse(JSON.stringify(CAMPEONATO)),
@@ -29,37 +35,20 @@
     jogos:  JSON.parse(JSON.stringify(JOGOS)),
   };
 
-  let STATE = carregar();
+  let STATE = JSON.parse(JSON.stringify(PUBLICADO));
+  let CLOUD_STATE = null;
+  let bancoVazio = false;
+  let logado = false;
+  let modalAberto = false;
+  let statusNuvem = "conectando"; // conectando | ao-vivo | erro | vazio
 
-  function carregar() {
-    try {
-      const salvo = localStorage.getItem(LS_KEY);
-      if (salvo) {
-        const s = JSON.parse(salvo);
-        // Garante que campos novos do publicado existam
-        return {
-          config: Object.assign({}, PUBLICADO.config, s.config || {}),
-          grupos: s.grupos && s.grupos.length ? s.grupos : PUBLICADO.grupos,
-          times:  s.times  || PUBLICADO.times,
-          jogos:  s.jogos  || PUBLICADO.jogos,
-        };
-      }
-    } catch (e) { /* ignora e usa publicado */ }
-    return JSON.parse(JSON.stringify(PUBLICADO));
-  }
-
-  function salvar() {
-    try { localStorage.setItem(LS_KEY, JSON.stringify(STATE)); } catch (e) {}
-  }
-
-  function resetarPublicado() {
-    localStorage.removeItem(LS_KEY);
-    STATE = JSON.parse(JSON.stringify(PUBLICADO));
-    renderTudo();
-  }
-
-  function temAlteracoesLocais() {
-    return !!localStorage.getItem(LS_KEY);
+  function normalizarNuvem(dados) {
+    return {
+      config: Object.assign({}, PUBLICADO.config, dados.config || {}),
+      grupos: (dados.grupos && dados.grupos.length) ? dados.grupos : PUBLICADO.grupos,
+      times:  dados.times || PUBLICADO.times,
+      jogos:  dados.jogos || PUBLICADO.jogos,
+    };
   }
 
   /* =======================================================================
@@ -358,36 +347,111 @@
   }
 
   /* =======================================================================
-     GERENCIADOR (painel com senha)
+     STATUS DA NUVEM (indicador visível + banner dentro do Gerenciador)
      ======================================================================= */
-  let desbloqueado = false;
+  function aplicarStatusNuvem() {
+    const mapaPill = {
+      conectando: { txt: "Conectando…", cls: "status--conectando" },
+      "ao-vivo":  { txt: "Ao vivo",     cls: "status--ok" },
+      erro:       { txt: "Sem conexão", cls: "status--erro" },
+      vazio:      { txt: "Aguardando dados", cls: "status--conectando" },
+    };
+    const info = mapaPill[statusNuvem] || mapaPill.conectando;
+    const pill = document.getElementById("status-nuvem");
+    if (pill) pill.className = "status-nuvem " + info.cls;
+    const pillTxt = document.getElementById("status-nuvem-texto");
+    if (pillTxt) pillTxt.textContent = info.txt;
+
+    const aviso = document.getElementById("ger-aviso");
+    if (aviso) {
+      if (statusNuvem === "erro") {
+        aviso.className = "ger-aviso ger-aviso--erro";
+        aviso.innerHTML = "<span>🔴 Sem conexão com a nuvem agora. Mostrando os últimos dados carregados — tentando reconectar…</span>";
+        aviso.style.display = "flex";
+      } else if (statusNuvem === "vazio") {
+        aviso.className = "ger-aviso ger-aviso--vazio";
+        aviso.innerHTML = "<span>☁️ O banco de dados da nuvem ainda está vazio. Vá na aba <b>Nuvem</b> e envie os dados iniciais.</span>";
+        aviso.style.display = "flex";
+      } else {
+        aviso.style.display = "none";
+      }
+    }
+
+    const seed = document.getElementById("ger-nuvem-seed");
+    if (seed) seed.style.display = bancoVazio ? "block" : "none";
+
+    const linha = document.getElementById("ger-nuvem-status-texto");
+    if (linha) {
+      const mapaLinha = {
+        conectando: "Conectando à nuvem…",
+        "ao-vivo": "✅ Conectado — as alterações aparecem para todos, na hora.",
+        erro: "🔴 Sem conexão com a nuvem no momento.",
+        vazio: "☁️ Conectado, mas o banco ainda está vazio.",
+      };
+      linha.textContent = mapaLinha[statusNuvem] || "";
+    }
+
+    const btnSair = document.getElementById("ger-btn-sair");
+    if (btnSair) btnSair.style.display = logado ? "inline-block" : "none";
+  }
+
+  /* =======================================================================
+     GERENCIADOR — login por senha (Firebase Auth) + dados na nuvem
+     ======================================================================= */
   let abaGer = "jogos";
 
-  function abrirGerenciador() {
-    if (!desbloqueado) {
+  function mensagemErroLogin(e) {
+    const c = (e && e.code) || "";
+    if (c.indexOf("network") !== -1) return "Sem conexão com a internet. Verifique e tente novamente.";
+    if (c.indexOf("too-many-requests") !== -1) return "Muitas tentativas erradas. Aguarde um instante e tente de novo.";
+    return "Senha incorreta.";
+  }
+
+  function mensagemErroSalvar(e) {
+    const c = (e && e.code) || "";
+    if (c.indexOf("permission-denied") !== -1) return "Sua sessão expirou. Feche e abra o Gerenciador de novo.";
+    if (c.indexOf("network") !== -1 || c.indexOf("unavailable") !== -1) return "Verifique sua internet e tente novamente.";
+    return "Tente novamente em instantes.";
+  }
+
+  async function abrirGerenciador() {
+    if (!logado) {
+      if (!window.CampDB) { alert("Ainda conectando à nuvem, tente de novo em alguns segundos."); return; }
       const senha = prompt("Senha do Gerenciador:");
       if (senha === null) return;
-      if (senha !== STATE.config.senhaGerenciador) { alert("Senha incorreta."); return; }
-      desbloqueado = true;
+      if (!senha.trim()) { alert("Digite a senha."); return; }
+      try {
+        await window.CampDB.entrar(senha);
+      } catch (e) {
+        alert(mensagemErroLogin(e));
+        return;
+      }
     }
+    modalAberto = true;
     document.getElementById("ger-modal").classList.add("aberto");
     document.body.classList.add("sem-scroll");
     renderGerenciador();
   }
 
   function fecharGerenciador() {
+    modalAberto = false;
     document.getElementById("ger-modal").classList.remove("aberto");
     document.body.classList.remove("sem-scroll");
   }
 
+  async function sairGerenciador() {
+    if (!confirm("Sair do modo Gerenciar neste aparelho? Na próxima vez vai pedir a senha de novo.")) return;
+    try { await window.CampDB.sair(); } catch (e) { /* ignora */ }
+    fecharGerenciador();
+  }
+
   function renderGerenciador() {
-    // abas internas
     document.querySelectorAll(".ger-tab").forEach((t) =>
       t.classList.toggle("ativo", t.dataset.ger === abaGer));
     document.querySelectorAll(".ger-secao").forEach((s) =>
       s.classList.toggle("ativo", s.dataset.ger === abaGer));
 
-    document.getElementById("ger-aviso").style.display = temAlteracoesLocais() ? "flex" : "none";
+    aplicarStatusNuvem();
 
     if (abaGer === "jogos") renderGerJogos();
     if (abaGer === "times") renderGerTimes();
@@ -397,6 +461,26 @@
     return STATE.times.map((t) =>
       `<option value="${t.id}" ${t.id === selecionado ? "selected" : ""}>${escapeHtml(t.nome)} (${t.grupo})</option>`
     ).join("");
+  }
+
+  /* ---------- Salvar na nuvem (com feedback visual e reversão em erro) ---------- */
+  async function salvarNuvem(botao) {
+    let textoOriginal = "";
+    if (botao) { textoOriginal = botao.textContent; botao.disabled = true; botao.textContent = "Salvando…"; }
+    try {
+      await window.CampDB.salvar(STATE);
+      CLOUD_STATE = JSON.parse(JSON.stringify(STATE));
+      bancoVazio = false;
+      return true;
+    } catch (e) {
+      alert("Não foi possível salvar na nuvem. " + mensagemErroSalvar(e));
+      STATE = CLOUD_STATE ? JSON.parse(JSON.stringify(CLOUD_STATE)) : JSON.parse(JSON.stringify(PUBLICADO));
+      renderTudo();
+      if (modalAberto) renderGerenciador();
+      return false;
+    } finally {
+      if (botao) { botao.disabled = false; botao.textContent = textoOriginal; }
+    }
   }
 
   /* ---------- Gerenciar JOGOS ---------- */
@@ -470,7 +554,7 @@
     renderGerJogos();
   }
 
-  function salvarFormJogo() {
+  async function salvarFormJogo() {
     const idxRaw = document.getElementById("fj-idx").value;
     const mandante = document.getElementById("fj-mandante").value;
     const visitante = document.getElementById("fj-visitante").value;
@@ -494,20 +578,25 @@
       local: document.getElementById("fj-local").value.trim(),
     };
 
+    STATE.jogos = STATE.jogos.slice();
     if (idxRaw === "") STATE.jogos.push(jogo);
     else STATE.jogos[Number(idxRaw)] = jogo;
 
-    salvar();
+    const ok = await salvarNuvem(document.getElementById("fj-salvar"));
+    if (!ok) return;
+
     fecharFormJogo();
     renderTudo();
     renderGerenciador();
   }
 
-  function excluirJogo(idx) {
+  async function excluirJogo(idx) {
     const j = STATE.jogos[idx];
     if (!confirm(`Excluir o jogo ${nomeTime(j.mandante)} × ${nomeTime(j.visitante)}?`)) return;
+    STATE.jogos = STATE.jogos.slice();
     STATE.jogos.splice(idx, 1);
-    salvar();
+    const ok = await salvarNuvem();
+    if (!ok) return;
     renderTudo();
     renderGerenciador();
   }
@@ -570,7 +659,7 @@
       .replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
   }
 
-  function salvarFormTime() {
+  async function salvarFormTime() {
     const idxRaw = document.getElementById("ft-idx").value;
     const nome = document.getElementById("ft-nome").value.trim();
     let id = document.getElementById("ft-id").value.trim() || slug(nome);
@@ -580,6 +669,8 @@
     if (!nome) { alert("Digite o nome do time."); return; }
     if (!id) { alert("Digite um apelido/ID válido."); return; }
 
+    STATE.times = STATE.times.map((t) => Object.assign({}, t));
+
     if (idxRaw === "") {
       if (STATE.times.some((t) => t.id === id)) { alert("Já existe um time com esse ID."); return; }
       STATE.times.push({ id, nome, grupo, escudo });
@@ -587,29 +678,43 @@
       const t = STATE.times[Number(idxRaw)];
       t.nome = nome; t.grupo = grupo; t.escudo = escudo;
     }
-    salvar();
+
+    const ok = await salvarNuvem(document.getElementById("ft-salvar"));
+    if (!ok) return;
+
     fecharFormTime();
     renderTudo();
     renderGerenciador();
   }
 
-  function excluirTime(idx) {
+  async function excluirTime(idx) {
     const t = STATE.times[idx];
     const usado = STATE.jogos.some((j) => j.mandante === t.id || j.visitante === t.id);
     if (usado) { alert("Esse time tem jogos cadastrados. Exclua os jogos dele primeiro."); return; }
     if (!confirm(`Excluir o time ${t.nome}?`)) return;
+    STATE.times = STATE.times.slice();
     STATE.times.splice(idx, 1);
-    salvar();
+    const ok = await salvarNuvem();
+    if (!ok) return;
     renderTudo();
     renderGerenciador();
   }
 
-  /* ---------- EXPORTAR dados.js ---------- */
+  /* ---------- Enviar dados iniciais (semear a nuvem) ---------- */
+  async function semearNuvem() {
+    if (!confirm("Enviar os dados atuais (times e jogos já cadastrados) como base inicial da nuvem?")) return;
+    const btn = document.querySelector('[data-acao="semear"]');
+    const ok = await salvarNuvem(btn);
+    if (ok) { alert("Pronto! O site agora está ao vivo para todo mundo."); renderGerenciador(); }
+  }
+
+  /* ---------- Backup (baixar cópia dos dados) ---------- */
   function gerarDadosJs() {
     const j2 = (obj) => JSON.stringify(obj, null, 2);
     return `/* =========================================================================
-   DADOS DO CAMPEONATO — gerado pelo Gerenciador em ${STATE.config.temporada}
-   Substitua o arquivo assets/js/dados.js por este e republique o site.
+   BACKUP DOS DADOS — gerado pelo Gerenciador em ${STATE.config.temporada}
+   Isto é uma cópia de segurança. Os dados reais do site ficam na nuvem
+   (Firebase); este arquivo NÃO precisa ser publicado em lugar nenhum.
    ========================================================================= */
 
 const CAMPEONATO = ${j2(STATE.config)};
@@ -626,7 +731,8 @@ const JOGOS = ${j2(STATE.jogos)};
     const blob = new Blob([gerarDadosJs()], { type: "text/javascript;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
-    a.href = url; a.download = "dados.js";
+    const data = new Date().toISOString().slice(0, 10);
+    a.href = url; a.download = `backup-campeonato-${data}.js`;
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
@@ -642,17 +748,14 @@ const JOGOS = ${j2(STATE.jogos)};
     document.querySelectorAll(".ger-tab").forEach((t) =>
       t.addEventListener("click", () => { abaGer = t.dataset.ger; renderGerenciador(); }));
 
-    // Delegação de cliques na área do gerenciador
     document.getElementById("ger-modal").addEventListener("click", (e) => {
       const t = e.target.closest("[data-acao],[data-editar-jogo],[data-excluir-jogo],[data-editar-time],[data-excluir-time]");
       if (!t) return;
       if (t.dataset.acao === "novo-jogo") formJogo(null);
       else if (t.dataset.acao === "novo-time") formTime(null);
       else if (t.dataset.acao === "exportar") exportarDadosJs();
-      else if (t.dataset.acao === "resetar") {
-        if (confirm("Isso apaga as alterações salvas neste navegador e volta para os dados publicados. Continuar?"))
-          { resetarPublicado(); renderGerenciador(); }
-      }
+      else if (t.dataset.acao === "semear") semearNuvem();
+      else if (t.dataset.acao === "sair") sairGerenciador();
       else if (t.dataset.editarJogo != null) formJogo(Number(t.dataset.editarJogo));
       else if (t.dataset.excluirJogo != null) excluirJogo(Number(t.dataset.excluirJogo));
       else if (t.dataset.editarTime != null) formTime(Number(t.dataset.editarTime));
@@ -661,6 +764,55 @@ const JOGOS = ${j2(STATE.jogos)};
 
     document.addEventListener("keydown", (e) => {
       if (e.key === "Escape") fecharGerenciador();
+    });
+  }
+
+  /* =======================================================================
+     CONEXÃO COM A NUVEM
+     -------------------------------------------------------------------------
+     db.js carrega como módulo "async" — independente da renderização inicial
+     (que já aconteceu com os dados de fallback). Aqui só conectamos assim
+     que ele avisar que está pronto (ou na hora, se já estiver pronto).
+     ======================================================================= */
+  function iniciarNuvem() {
+    if (window.CampDB) { conectarCampDB(); return; }
+
+    let conectado = false;
+    window.addEventListener("campdb-pronto", () => { conectado = true; conectarCampDB(); }, { once: true });
+
+    // Se em 12s a nuvem não respondeu (rede lenta/bloqueada), avisa sem
+    // travar o site — e continua escutando, caso conecte mais tarde.
+    setTimeout(() => {
+      if (!conectado) { statusNuvem = "erro"; aplicarStatusNuvem(); }
+    }, 12000);
+  }
+
+  function conectarCampDB() {
+    window.CampDB.aoMudarLogin((estaLogado) => {
+      logado = estaLogado;
+      if (modalAberto) renderGerenciador();
+      else aplicarStatusNuvem();
+    });
+
+    window.CampDB.onDados((dados, erro) => {
+      if (erro) {
+        statusNuvem = "erro";
+        aplicarStatusNuvem();
+        return;
+      }
+      if (dados) {
+        STATE = normalizarNuvem(dados);
+        CLOUD_STATE = JSON.parse(JSON.stringify(STATE));
+        bancoVazio = false;
+        statusNuvem = "ao-vivo";
+      } else {
+        bancoVazio = true;
+        statusNuvem = "vazio";
+        // mantém STATE com o fallback (dados.js) para a tela nunca ficar em branco
+      }
+      renderTudo();
+      if (modalAberto) renderGerenciador();
+      aplicarStatusNuvem();
     });
   }
 
@@ -675,8 +827,10 @@ const JOGOS = ${j2(STATE.jogos)};
   }
 
   document.addEventListener("DOMContentLoaded", function () {
-    renderTudo();
+    renderTudo();      // pintura instantânea com os dados de fallback
     initAbas();
     initGerenciador();
+    aplicarStatusNuvem();
+    iniciarNuvem();     // conecta e assume os dados reais assim que chegarem
   });
 })();

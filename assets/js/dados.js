@@ -2,16 +2,19 @@
    DADOS DO CAMPEONATO — CAMPEONATO MUNICIPAL DE FUTEBOL DE GAMELEIRAS
    =========================================================================
 
-   Este arquivo é a "fonte publicada" dos dados (o que todo mundo vê no site).
-   Você NÃO precisa editar ele na mão no dia a dia:
+   Este arquivo é só a "semente" inicial / fallback: o que aparece na
+   primeira fração de segundo antes do site conectar na nuvem, e o que
+   aparece se a internet cair. A fonte de verdade dos dados é o banco
+   (Firebase) — todo mundo que abre o site vê a mesma coisa, ao vivo.
 
+   Você NÃO precisa editar este arquivo no dia a dia:
      -> Use o botão "Gerenciar" no site (canto inferior direito, com senha).
-        Lá você cadastra times, cria jogos e digita o placar. A tabela
-        atualiza sozinha. As alterações ficam salvas no seu navegador.
+        Lá você cadastra times, cria jogos e digita o placar. Assim que
+        salva, atualiza para TODO MUNDO na hora, em qualquer lugar.
 
-     -> Quando quiser publicar as mudanças para todo mundo, clique em
-        "Exportar dados.js" dentro do gerenciador. Ele baixa um arquivo
-        dados.js já pronto — substitua este arquivo por ele e republique.
+   A senha do Gerenciador NÃO fica mais neste arquivo — ela é gerenciada
+   no Firebase (Console → Authentication → Users → admin@gameleiras.com).
+   Para trocar a senha, mude ela lá.
 
    A tabela de classificação é SEMPRE calculada a partir dos jogos.
    ========================================================================= */
@@ -26,7 +29,6 @@ const CAMPEONATO = {
   pontosEmpate: 1,
   pontosDerrota: 0,
   classificadosPorGrupo: 2,         // quantos de cada grupo avançam (zona verde)
-  senhaGerenciador: "gameleiras2026" // senha do painel Gerenciar (troque se quiser)
 };
 
 /* -------------------------------------------------------------------------
