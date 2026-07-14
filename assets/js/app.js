@@ -10,6 +10,14 @@
 
   const LS_KEY = "gameleiras_camp_v1";
   const IMG_TIMES = "assets/img/times/";
+  const CACHE_VER = "5"; // troque quando atualizar imagens (força o navegador a rebaixar)
+
+  // Monta o src do escudo/logo; em data URI (link de teste) devolve direto.
+  function comVersao(base) {
+    if (!base) return "";
+    if (base.indexOf("data:") === 0) return base;
+    return base + "?v=" + CACHE_VER;
+  }
 
   /* =======================================================================
      ESTADO  (parte de dados.js; se houver alterações salvas, usa elas)
@@ -93,7 +101,7 @@
     if (time && time.escudo) {
       const ini = iniciais(time.nome);
       return `<span class="${cls}" style="--cor:${corDoTime(time.id)}">
-        <img src="${IMG_TIMES}${time.escudo}" alt="${time.nome}" loading="lazy"
+        <img src="${comVersao(IMG_TIMES + time.escudo)}" alt="${time.nome}" loading="lazy"
              onerror="this.parentElement.classList.add('escudo--txt');this.parentElement.textContent='${ini}';"></span>`;
     }
     const cor = time ? corDoTime(time.id) : "#5a6b60";
@@ -322,7 +330,8 @@
     document.title = c.nome + " de " + (c.cidade || "") + " · " + c.temporada;
     const logo = document.getElementById("camp-logo");
     if (c.logo) {
-      logo.innerHTML = `<img src="assets/img/${c.logo}" alt="${escapeHtml(c.nome)}"
+      const logoSrc = c.logo.indexOf("data:") === 0 ? c.logo : comVersao("assets/img/" + c.logo);
+      logo.innerHTML = `<img src="${logoSrc}" alt="${escapeHtml(c.nome)}"
         onerror="this.parentElement.classList.add('logo--erro');this.remove();">`;
     }
   }

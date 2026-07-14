@@ -273,20 +273,19 @@ img { max-width: 100%; display: block; }
    ========================================================================= */
 .escudo {
   flex: 0 0 auto; display: grid; place-items: center;
-  background: transparent; overflow: visible;
+  background: radial-gradient(circle at 50% 38%, #ffffff, #eef1ee);
+  border-radius: 26%; overflow: hidden;
+  box-shadow: 0 2px 7px rgba(0,0,0,.3), inset 0 0 0 1px rgba(0,0,0,.06);
 }
-.escudo img {
-  width: 100%; height: 100%; object-fit: contain;
-  filter: drop-shadow(0 2px 4px rgba(0,0,0,.4));
-}
+.escudo img { width: 100%; height: 100%; object-fit: contain; }
 .escudo--txt {
   color: #fff; font-family: var(--fonte-cond); font-weight: 700;
-  background: var(--cor, #4a5); border-radius: 24%;
-  box-shadow: inset 0 0 0 2px rgba(255,255,255,.15);
+  background: var(--cor, #4a5);
+  box-shadow: inset 0 0 0 2px rgba(255,255,255,.18);
 }
-.escudo--sm { width: 32px; height: 32px; font-size: .72rem; }
-.escudo--md { width: 62px; height: 62px; font-size: 1.15rem; }
-.escudo--lg { width: 96px; height: 96px; font-size: 1.7rem; }
+.escudo--sm { width: 34px; height: 34px; font-size: .72rem; padding: 3px; }
+.escudo--md { width: 64px; height: 64px; font-size: 1.15rem; padding: 6px; }
+.escudo--lg { width: 98px; height: 98px; font-size: 1.7rem; padding: 9px; }
 
 /* =========================================================================
    JOGOS
