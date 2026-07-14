@@ -60,7 +60,7 @@ const TIMES = [
   { id: "gameleiras",   nome: "Gameleira F.C.",    grupo: "C", escudo: "gameleiras.webp" },
   { id: "verdao",       nome: "Verdão",            grupo: "C", escudo: "verdao.webp" },
   { id: "jacu-fc",      nome: "Jacu FC",           grupo: "C", escudo: "jacu-fc.webp" },
-  { id: "vila-jacu",    nome: "Vila do Jacu",      grupo: "C", escudo: "" }
+  { id: "vila-jacu",    nome: "Vila do Jacu",      grupo: "C", escudo: "vila-jacu.webp" }
 ];
 
 /* -------------------------------------------------------------------------
