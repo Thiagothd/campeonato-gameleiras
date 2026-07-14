@@ -273,20 +273,29 @@ img { max-width: 100%; display: block; }
    ========================================================================= */
 .escudo {
   flex: 0 0 auto; display: grid; place-items: center;
-  background: radial-gradient(circle at 50% 38%, #ffffff, #eef1ee);
-  border-radius: 22%; overflow: hidden;
-  box-shadow: 0 2px 7px rgba(0,0,0,.3), inset 0 0 0 1px rgba(0,0,0,.06);
+  background: transparent; overflow: visible;
 }
-.escudo img { width: 100%; height: 100%; object-fit: contain; }
+.escudo img { width: 100%; height: 100%; object-fit: contain;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,.4)); }
 .escudo--txt {
   color: #fff; font-family: var(--fonte-cond); font-weight: 700;
-  background: var(--cor, #4a5);
-  box-shadow: inset 0 0 0 2px rgba(255,255,255,.18);
+  background: var(--cor, #4a5); border-radius: 24%;
+  box-shadow: inset 0 0 0 2px rgba(255,255,255,.15);
 }
-/* padding generoso pro brasão não encostar/cortar nas quinas do chip */
-.escudo--sm { width: 34px; height: 34px; font-size: .72rem; padding: 5px; }
-.escudo--md { width: 66px; height: 66px; font-size: 1.15rem; padding: 10px; }
-.escudo--lg { width: 100px; height: 100px; font-size: 1.7rem; padding: 16px; }
+.escudo--sm { width: 32px; height: 32px; font-size: .72rem; }
+.escudo--md { width: 62px; height: 62px; font-size: 1.15rem; }
+.escudo--lg { width: 96px; height: 96px; font-size: 1.7rem; }
+
+/* Fundo branco só para escudos que precisam (ex.: EF Gama) — marque chip:true no time */
+.escudo--chip {
+  background: radial-gradient(circle at 50% 38%, #ffffff, #eef1ee);
+  border-radius: 22%; overflow: hidden;
+  box-shadow: 0 2px 6px rgba(0,0,0,.3), inset 0 0 0 1px rgba(0,0,0,.06);
+}
+.escudo--chip img { filter: none; }
+.escudo--chip.escudo--sm { padding: 5px; }
+.escudo--chip.escudo--md { padding: 9px; }
+.escudo--chip.escudo--lg { padding: 14px; }
 
 /* =========================================================================
    JOGOS

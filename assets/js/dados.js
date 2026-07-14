@@ -53,7 +53,7 @@ const TIMES = [
   // ---- Grupo B ----
   { id: "engenho",      nome: "Engenho",           grupo: "B", escudo: "engenho.webp" },
   { id: "malhadinha",   nome: "Malhadinha",        grupo: "B", escudo: "malhadinha.webp" },
-  { id: "ef-gama",      nome: "EF Gama",           grupo: "B", escudo: "ef-gama.webp" },
+  { id: "ef-gama",      nome: "EF Gama",           grupo: "B", escudo: "ef-gama.webp", chip: true },
   { id: "boa-vista",    nome: "Boa Vista",         grupo: "B", escudo: "boa-vista.webp" },
 
   // ---- Grupo C ----

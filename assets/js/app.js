@@ -10,7 +10,7 @@
 
   const LS_KEY = "gameleiras_camp_v1";
   const IMG_TIMES = "assets/img/times/";
-  const CACHE_VER = "5"; // troque quando atualizar imagens (força o navegador a rebaixar)
+  const CACHE_VER = "6"; // troque quando atualizar imagens (força o navegador a rebaixar)
 
   // Monta o src do escudo/logo; em data URI (link de teste) devolve direto.
   function comVersao(base) {
@@ -97,7 +97,7 @@
   }
 
   function escudoHTML(time, tam) {
-    const cls = "escudo escudo--" + tam;
+    const cls = "escudo escudo--" + tam + (time && time.chip ? " escudo--chip" : "");
     if (time && time.escudo) {
       const ini = iniciais(time.nome);
       return `<span class="${cls}" style="--cor:${corDoTime(time.id)}">
