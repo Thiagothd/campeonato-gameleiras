@@ -26,8 +26,7 @@ No site, canto inferior direito, há o botão **🔒 Gerenciar**.
 4. Pronto — assim que salva, **todo mundo já vê** a tabela atualizada.
 
 No mesmo aparelho, depois de digitar a senha uma vez, ele **lembra** — não
-pede de novo (a não ser que você clique em "Sair do modo Gerenciar", na aba
-Nuvem).
+pede de novo.
 
 ### Indicador de conexão
 No canto inferior esquerdo do site aparece um selo:
@@ -38,24 +37,18 @@ No canto inferior esquerdo do site aparece um selo:
 
 ---
 
-## Primeira vez / banco vazio
-
-Se a aba **Nuvem** do Gerenciador mostrar "banco de dados vazio", clique em
-**"Enviar dados iniciais para a nuvem"** — isso publica os times e jogos que
-já estão no arquivo `assets/js/dados.js` como ponto de partida. Depois disso
-você nunca mais precisa mexer nesse arquivo; use sempre o Gerenciador.
+## Banco de dados vazio (situação rara)
+Se o banco da nuvem for apagado ou zerar por algum motivo, o site mostra um
+aviso amarelo dentro do Gerenciador com o botão **"Enviar dados iniciais"** —
+clique nele para publicar de novo os times e jogos que estão no arquivo
+`assets/js/dados.js` como ponto de partida. Isso já aconteceu uma vez, na
+primeira configuração do site, e não deve ser necessário de novo.
 
 ## Trocar a senha do Gerenciador
 A senha é controlada pelo Firebase, não pelo código do site:
 1. Acesse **console.firebase.google.com** → projeto `campeonato-gameleiras`.
 2. **Authentication → Users** → clique nos três pontinhos do usuário
    `admin@gameleiras.com` → **Redefinir senha**.
-
-## Backup
-Na aba **Nuvem** do Gerenciador tem um botão **"Baixar backup"** — baixa uma
-cópia de segurança de tudo (times, jogos e configurações) em um arquivo
-`.js`. Não é preciso publicar esse arquivo em lugar nenhum; é só uma cópia
-de segurança, caso precise restaurar algo manualmente algum dia.
 
 ---
 
