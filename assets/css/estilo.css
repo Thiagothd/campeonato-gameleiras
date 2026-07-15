@@ -662,6 +662,37 @@ img { max-width: 100%; display: block; }
 /* =========================================================================
    RESPONSIVO
    ========================================================================= */
+@media (max-width: 768px) {
+  /* (3) Classificação: grupos EMPILHADOS no mobile (não espremer J/V/E/D…).
+     A rolagem horizontal, se precisar, fica só dentro da própria tabela
+     (.tabela-wrap já tem overflow-x:auto). */
+  .grupos-container { grid-template-columns: 1fr; }
+
+  /* (1) Lista de Jogos do Gerenciador vira CARD: placar em destaque no topo,
+     nomes dos times sem esmagar, e botões grandes embaixo (bom pro dedo). */
+  #ger-jogos-lista .ger-item {
+    flex-direction: column; align-items: stretch;
+    gap: 10px; padding: 12px 14px; text-align: center;
+  }
+  #ger-jogos-lista .ger-item-info {
+    flex-direction: column; align-items: center; gap: 5px; width: 100%;
+  }
+  #ger-jogos-lista .ger-item-tit {
+    display: flex; flex-direction: column; align-items: center; gap: 1px;
+    width: 100%; line-height: 1.25; font-size: .95rem;
+  }
+  #ger-jogos-lista .gi-placar {
+    order: -1;                       /* placar sobe para o topo do card */
+    font-family: var(--fonte-cond); font-weight: 700;
+    font-size: 1.7rem; line-height: 1; color: var(--dourado-claro);
+    margin-bottom: 3px;
+  }
+  #ger-jogos-lista .gi-time { font-size: .95rem; }
+  #ger-jogos-lista .ger-item-sub { text-align: center; }
+  #ger-jogos-lista .ger-item-acoes { width: 100%; gap: 8px; }
+  #ger-jogos-lista .ger-item-acoes .btn-mini { flex: 1; padding: 11px 12px; font-size: .85rem; }
+}
+
 @media (max-width: 560px) {
   .cabecalho-conteudo { gap: 12px; padding: 18px 14px 22px; }
   .camp-logo { width: 80px; height: 80px; padding: 2px; }

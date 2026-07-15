@@ -10,7 +10,7 @@
   "use strict";
 
   const IMG_TIMES = "assets/img/times/";
-  const CACHE_VER = "19"; // troque quando atualizar imagens/CSS/JS (força o navegador a rebaixar)
+  const CACHE_VER = "20"; // troque quando atualizar imagens/CSS/JS (força o navegador a rebaixar)
 
   function comVersao(base) {
     if (!base) return "";
@@ -455,7 +455,20 @@
   }
 
   /* ---------- Salvar na nuvem (com feedback visual e reversão em erro) ---------- */
+  // Firestore rejeita documentos acima de ~1MB. Como TUDO (times + jogos) vai
+  // num único documento, checamos o tamanho total antes de enviar e barramos
+  // com uma mensagem clara, em vez de deixar o salvamento falhar em silêncio.
+  const LIMITE_DOC_BYTES = 950 * 1024; // margem de segurança abaixo de 1MB
   async function salvarNuvem(botao) {
+    const tamanho = new Blob([JSON.stringify(STATE)]).size;
+    if (tamanho > LIMITE_DOC_BYTES) {
+      alert("Não foi possível salvar: os dados ficaram grandes demais para a nuvem " +
+        "(provavelmente muitos escudos pesados). Troque algum escudo por uma imagem mais leve.");
+      STATE = CLOUD_STATE ? JSON.parse(JSON.stringify(CLOUD_STATE)) : JSON.parse(JSON.stringify(PUBLICADO));
+      renderTudo();
+      if (modalAberto) renderGerenciador();
+      return false;
+    }
     let textoOriginal = "";
     if (botao) { textoOriginal = botao.textContent; botao.disabled = true; botao.textContent = "Salvando…"; }
     try {
@@ -557,7 +570,7 @@
       return `
         <div class="ger-item">
           <div class="ger-item-info">
-            <span class="ger-item-tit">${escapeHtml(nomeTime(j.mandante))} <b>${placar}</b> ${escapeHtml(nomeTime(j.visitante))}</span>
+            <span class="ger-item-tit"><span class="gi-time">${escapeHtml(nomeTime(j.mandante))}</span> <b class="gi-placar">${placar}</b> <span class="gi-time">${escapeHtml(nomeTime(j.visitante))}</span></span>
             <span class="ger-item-sub">${grupoDoJogo(j) ? "Grupo " + grupoDoJogo(j) + " · " : ""}${j.rodada ? "Rod " + j.rodada + " · " : ""}${j.data || "sem data"}</span>
           </div>
           <div class="ger-item-acoes">
@@ -777,17 +790,24 @@
     return canvas;
   }
 
+  // Comprime a imagem com FORÇA e garante que a STRING base64 final caiba num
+  // limite pequeno — o Firestore aceita no máximo 1MB por documento, e esse
+  // documento guarda TODOS os times e jogos, então cada escudo precisa ser leve.
+  // Medimos o tamanho real da string (nº de caracteres ≈ bytes) e exigimos
+  // <= 100KB; se nem no ajuste mais agressivo couber, retorna null (bloqueia).
+  const LIMITE_ESCUDO_BYTES = 100 * 1024; // 100 KB
   async function processarImagemEscudo(file) {
-    const LIMITE_BYTES = 200 * 1024; // ~200KB em base64 por escudo (margem confortável no documento)
     const img = await carregarImagem(file);
-    let lado = 320, qualidade = 0.85;
-    for (let i = 0; i < 6; i++) {
+    // Tentativas progressivamente mais agressivas: [lado máximo, qualidade webp]
+    const tentativas = [
+      [320, 0.6], [288, 0.55], [256, 0.5], [224, 0.5],
+      [192, 0.45], [160, 0.4], [128, 0.4], [96, 0.35],
+    ];
+    for (const [lado, qualidade] of tentativas) {
       const dataUrl = desenharCanvas(img, lado).toDataURL("image/webp", qualidade);
-      if (dataUrl.length * 0.75 <= LIMITE_BYTES || (lado <= 96 && qualidade <= 0.4)) return dataUrl;
-      if (qualidade > 0.4) qualidade = Math.max(0.4, qualidade - 0.15);
-      else lado = Math.round(lado * 0.75);
+      if (dataUrl.length <= LIMITE_ESCUDO_BYTES) return dataUrl;
     }
-    return null;
+    return null; // não coube em 100KB nem no menor tamanho/mais comprimido
   }
 
   async function aoEscolherEscudo(e) {
@@ -797,7 +817,7 @@
     if (file.size > 15 * 1024 * 1024) { alert("Essa imagem é muito grande (máximo 15MB)."); e.target.value = ""; return; }
     try {
       const dataUrl = await processarImagemEscudo(file);
-      if (!dataUrl) { alert("Não foi possível deixar essa imagem pequena o bastante. Tente outra."); return; }
+      if (!dataUrl) { alert("A imagem escolhida é muito pesada mesmo após compressão. Escolha um arquivo menor."); return; }
       document.getElementById("ft-escudo").value = dataUrl;
       document.getElementById("ft-preview").innerHTML = `<img src="${dataUrl}" alt="">`;
       document.getElementById("ft-remover").hidden = false;
