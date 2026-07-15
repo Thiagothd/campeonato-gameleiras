@@ -10,7 +10,7 @@
   "use strict";
 
   const IMG_TIMES = "assets/img/times/";
-  const CACHE_VER = "18"; // troque quando atualizar imagens/CSS/JS (força o navegador a rebaixar)
+  const CACHE_VER = "19"; // troque quando atualizar imagens/CSS/JS (força o navegador a rebaixar)
 
   function comVersao(base) {
     if (!base) return "";
@@ -391,7 +391,7 @@
      GERENCIADOR — login por senha (Firebase Auth) + dados na nuvem
      ======================================================================= */
   let abaGer = "jogos";
-  let filtroJogos = { de: "", ate: "", time: "", rodada: "", grupo: "" };
+  let filtroJogos = { de: "", ate: "", time: "", rodada: "", grupo: "", status: "" };
 
   function mensagemErroLogin(e) {
     const c = (e && e.code) || "";
@@ -422,7 +422,7 @@
     }
     modalAberto = true;
     // começa sempre com a lista completa e o filtro recolhido
-    filtroJogos = { de: "", ate: "", time: "", rodada: "", grupo: "" };
+    filtroJogos = { de: "", ate: "", time: "", rodada: "", grupo: "", status: "" };
     const detFiltros = document.getElementById("ger-filtros");
     if (detFiltros) detFiltros.open = false;
     document.getElementById("ger-modal").classList.add("aberto");
@@ -477,7 +477,7 @@
   /* ---------- Filtros da lista de jogos (client-side) ---------- */
   function contarFiltrosAtivos() {
     const f = filtroJogos;
-    return [f.de, f.ate, f.time, f.rodada, f.grupo].filter((v) => v !== "" && v != null).length;
+    return [f.de, f.ate, f.time, f.rodada, f.grupo, f.status].filter((v) => v !== "" && v != null).length;
   }
 
   function jogoPassaFiltro(j) {
@@ -487,6 +487,8 @@
     if (f.time && j.mandante !== f.time && j.visitante !== f.time) return false;
     if (f.rodada && String(j.rodada) !== String(f.rodada)) return false;
     if (f.grupo && grupoDoJogo(j) !== f.grupo) return false;
+    if (f.status === "encerrado" && !jogoRealizado(j)) return false;
+    if (f.status === "aberto" && jogoRealizado(j)) return false;
     return true;
   }
 
@@ -510,6 +512,10 @@
       STATE.grupos.map((g) => `<option value="${g.id}">${escapeHtml(g.nome)}</option>`).join("");
     grpSel.value = filtroJogos.grupo; filtroJogos.grupo = grpSel.value;
 
+    // Situação tem opções fixas no HTML; só restauramos a seleção.
+    const statusSel = document.getElementById("ff-status");
+    statusSel.value = filtroJogos.status; filtroJogos.status = statusSel.value;
+
     document.getElementById("ff-de").value = filtroJogos.de;
     document.getElementById("ff-ate").value = filtroJogos.ate;
   }
@@ -521,11 +527,12 @@
       time: document.getElementById("ff-time").value,
       rodada: document.getElementById("ff-rodada").value,
       grupo: document.getElementById("ff-grupo").value,
+      status: document.getElementById("ff-status").value,
     };
   }
 
   function limparFiltrosJogos() {
-    filtroJogos = { de: "", ate: "", time: "", rodada: "", grupo: "" };
+    filtroJogos = { de: "", ate: "", time: "", rodada: "", grupo: "", status: "" };
     renderFiltrosJogos();
     desenharListaJogos();
   }
@@ -582,7 +589,7 @@
     // Ao criar um jogo novo, limpa os filtros para ele não "sumir" da lista
     // caso um filtro ativo não combine com o jogo recém-criado.
     if (idx == null) {
-      filtroJogos = { de: "", ate: "", time: "", rodada: "", grupo: "" };
+      filtroJogos = { de: "", ate: "", time: "", rodada: "", grupo: "", status: "" };
     }
     const j = idx != null ? STATE.jogos[idx] : {
       grupo: "", rodada: "", mandante: "", visitante: "",
@@ -875,7 +882,7 @@
     // Filtro em tempo real: ao mexer em qualquer campo, refiltra a lista
     // (não re-renderiza a barra, para não perder foco/seleção do usuário).
     document.getElementById("ger-filtros").addEventListener("input", (e) => {
-      if (e.target.closest("#ff-de, #ff-ate, #ff-time, #ff-rodada, #ff-grupo")) {
+      if (e.target.closest("#ff-de, #ff-ate, #ff-time, #ff-rodada, #ff-grupo, #ff-status")) {
         lerFiltrosJogosDoDOM();
         desenharListaJogos();
       }
