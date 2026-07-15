@@ -10,7 +10,7 @@
   "use strict";
 
   const IMG_TIMES = "assets/img/times/";
-  const CACHE_VER = "20"; // troque quando atualizar imagens/CSS/JS (força o navegador a rebaixar)
+  const CACHE_VER = "21"; // troque quando atualizar imagens/CSS/JS (força o navegador a rebaixar)
 
   function comVersao(base) {
     if (!base) return "";
@@ -98,7 +98,7 @@
     if (time && time.escudo) {
       const ini = iniciais(time.nome);
       return `<span class="${cls}" style="--cor:${corDoTime(time.id)}">
-        <img src="${srcEscudo(time.escudo)}" alt="${time.nome}" loading="lazy"
+        <img src="${srcEscudo(time.escudo)}" alt="${escapeHtml(time.nome)}" loading="lazy"
              onerror="this.parentElement.classList.add('escudo--txt');this.parentElement.textContent='${ini}';"></span>`;
     }
     const cor = time ? corDoTime(time.id) : "#5a6b60";
@@ -458,7 +458,7 @@
   // Firestore rejeita documentos acima de ~1MB. Como TUDO (times + jogos) vai
   // num único documento, checamos o tamanho total antes de enviar e barramos
   // com uma mensagem clara, em vez de deixar o salvamento falhar em silêncio.
-  const LIMITE_DOC_BYTES = 950 * 1024; // margem de segurança abaixo de 1MB
+  const LIMITE_DOC_BYTES = 800 * 1024; // folga segura abaixo do limite real de 1MiB do Firestore
   async function salvarNuvem(botao) {
     const tamanho = new Blob([JSON.stringify(STATE)]).size;
     if (tamanho > LIMITE_DOC_BYTES) {
@@ -571,7 +571,7 @@
         <div class="ger-item">
           <div class="ger-item-info">
             <span class="ger-item-tit"><span class="gi-time">${escapeHtml(nomeTime(j.mandante))}</span> <b class="gi-placar">${placar}</b> <span class="gi-time">${escapeHtml(nomeTime(j.visitante))}</span></span>
-            <span class="ger-item-sub">${grupoDoJogo(j) ? "Grupo " + grupoDoJogo(j) + " · " : ""}${j.rodada ? "Rod " + j.rodada + " · " : ""}${j.data || "sem data"}</span>
+            <span class="ger-item-sub">${grupoDoJogo(j) ? "Grupo " + grupoDoJogo(j) + " · " : ""}${j.rodada ? "Rod " + escapeHtml(String(j.rodada)) + " · " : ""}${escapeHtml(j.data || "sem data")}</span>
           </div>
           <div class="ger-item-acoes">
             <button class="btn-mini" data-editar-jogo="${i}">Editar</button>
