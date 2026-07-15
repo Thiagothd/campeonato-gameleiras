@@ -10,7 +10,7 @@
   "use strict";
 
   const IMG_TIMES = "assets/img/times/";
-  const CACHE_VER = "17"; // troque quando atualizar imagens/CSS/JS (força o navegador a rebaixar)
+  const CACHE_VER = "18"; // troque quando atualizar imagens/CSS/JS (força o navegador a rebaixar)
 
   function comVersao(base) {
     if (!base) return "";
@@ -391,6 +391,7 @@
      GERENCIADOR — login por senha (Firebase Auth) + dados na nuvem
      ======================================================================= */
   let abaGer = "jogos";
+  let filtroJogos = { de: "", ate: "", time: "", rodada: "", grupo: "" };
 
   function mensagemErroLogin(e) {
     const c = (e && e.code) || "";
@@ -420,6 +421,10 @@
       }
     }
     modalAberto = true;
+    // começa sempre com a lista completa e o filtro recolhido
+    filtroJogos = { de: "", ate: "", time: "", rodada: "", grupo: "" };
+    const detFiltros = document.getElementById("ger-filtros");
+    if (detFiltros) detFiltros.open = false;
     document.getElementById("ger-modal").classList.add("aberto");
     document.body.classList.add("sem-scroll");
     renderGerenciador();
@@ -469,9 +474,78 @@
     }
   }
 
+  /* ---------- Filtros da lista de jogos (client-side) ---------- */
+  function contarFiltrosAtivos() {
+    const f = filtroJogos;
+    return [f.de, f.ate, f.time, f.rodada, f.grupo].filter((v) => v !== "" && v != null).length;
+  }
+
+  function jogoPassaFiltro(j) {
+    const f = filtroJogos;
+    if (f.de && (!j.data || j.data < f.de)) return false;
+    if (f.ate && (!j.data || j.data > f.ate)) return false;
+    if (f.time && j.mandante !== f.time && j.visitante !== f.time) return false;
+    if (f.rodada && String(j.rodada) !== String(f.rodada)) return false;
+    if (f.grupo && grupoDoJogo(j) !== f.grupo) return false;
+    return true;
+  }
+
+  // Preenche/atualiza os controles do filtro (só quando o gerenciador (re)abre
+  // ou os dados mudam) — preservando a seleção atual do usuário.
+  function renderFiltrosJogos() {
+    const timeSel = document.getElementById("ff-time");
+    timeSel.innerHTML = '<option value="">Todos os times</option>' +
+      STATE.times.map((t) => `<option value="${t.id}">${escapeHtml(t.nome)}</option>`).join("");
+    timeSel.value = filtroJogos.time; filtroJogos.time = timeSel.value;
+
+    const rodadas = Array.from(new Set(STATE.jogos.map((j) => j.rodada).filter((r) => r !== "" && r != null)))
+      .sort((a, b) => Number(a) - Number(b));
+    const rodSel = document.getElementById("ff-rodada");
+    rodSel.innerHTML = '<option value="">Todas</option>' +
+      rodadas.map((r) => `<option value="${r}">Rodada ${r}</option>`).join("");
+    rodSel.value = filtroJogos.rodada; filtroJogos.rodada = rodSel.value;
+
+    const grpSel = document.getElementById("ff-grupo");
+    grpSel.innerHTML = '<option value="">Todos</option>' +
+      STATE.grupos.map((g) => `<option value="${g.id}">${escapeHtml(g.nome)}</option>`).join("");
+    grpSel.value = filtroJogos.grupo; filtroJogos.grupo = grpSel.value;
+
+    document.getElementById("ff-de").value = filtroJogos.de;
+    document.getElementById("ff-ate").value = filtroJogos.ate;
+  }
+
+  function lerFiltrosJogosDoDOM() {
+    filtroJogos = {
+      de: document.getElementById("ff-de").value,
+      ate: document.getElementById("ff-ate").value,
+      time: document.getElementById("ff-time").value,
+      rodada: document.getElementById("ff-rodada").value,
+      grupo: document.getElementById("ff-grupo").value,
+    };
+  }
+
+  function limparFiltrosJogos() {
+    filtroJogos = { de: "", ate: "", time: "", rodada: "", grupo: "" };
+    renderFiltrosJogos();
+    desenharListaJogos();
+  }
+
   /* ---------- Gerenciar JOGOS ---------- */
   function renderGerJogos() {
-    const lista = STATE.jogos.map((j, i) => {
+    // A barra de filtros só faz sentido se há jogos para filtrar.
+    document.getElementById("ger-filtros").style.display = STATE.jogos.length ? "" : "none";
+    renderFiltrosJogos();
+    desenharListaJogos();
+  }
+
+  function desenharListaJogos() {
+    // Preserva o índice ORIGINAL de cada jogo (para editar/excluir continuarem
+    // corretos mesmo com a lista filtrada) e mostra só os que passam no filtro.
+    const visiveis = STATE.jogos
+      .map((j, i) => ({ j, i }))
+      .filter((o) => jogoPassaFiltro(o.j));
+
+    const lista = visiveis.map(({ j, i }) => {
       const placar = jogoRealizado(j) ? `${j.golsMandante} × ${j.golsVisitante}` : "— × —";
       return `
         <div class="ger-item">
@@ -486,11 +560,30 @@
         </div>`;
     }).join("");
 
-    document.getElementById("ger-jogos-lista").innerHTML =
-      lista || '<p class="vazio">Nenhum jogo. Clique em "Novo jogo".</p>';
+    const temFiltro = contarFiltrosAtivos() > 0;
+    document.getElementById("ger-jogos-lista").innerHTML = lista ||
+      (temFiltro
+        ? '<p class="vazio">Nenhum jogo encontrado com esses filtros.</p>'
+        : '<p class="vazio">Nenhum jogo. Clique em "Novo jogo".</p>');
+
+    // Contagem e selo de filtros ativos
+    const total = STATE.jogos.length, mostrando = visiveis.length;
+    const contagem = document.getElementById("ff-contagem");
+    if (contagem) contagem.textContent = temFiltro ? `${mostrando} de ${total} jogos` : `${total} jogos`;
+    const badge = document.getElementById("ger-filtros-badge");
+    if (badge) {
+      const n = contarFiltrosAtivos();
+      badge.textContent = n;
+      badge.hidden = n === 0;
+    }
   }
 
   function formJogo(idx) {
+    // Ao criar um jogo novo, limpa os filtros para ele não "sumir" da lista
+    // caso um filtro ativo não combine com o jogo recém-criado.
+    if (idx == null) {
+      filtroJogos = { de: "", ate: "", time: "", rodada: "", grupo: "" };
+    }
     const j = idx != null ? STATE.jogos[idx] : {
       grupo: "", rodada: "", mandante: "", visitante: "",
       golsMandante: "", golsVisitante: "", data: "", hora: "", local: "Arena Jatobá"
@@ -527,6 +620,7 @@
       </div>`;
     document.getElementById("ger-form-jogo").style.display = "block";
     document.getElementById("ger-jogos-lista").style.display = "none";
+    document.getElementById("ger-filtros").style.display = "none";
     document.querySelector('[data-acao="novo-jogo"]').style.display = "none";
 
     document.getElementById("fj-salvar").onclick = salvarFormJogo;
@@ -778,12 +872,22 @@
     document.querySelectorAll(".ger-tab").forEach((t) =>
       t.addEventListener("click", () => { abaGer = t.dataset.ger; renderGerenciador(); }));
 
+    // Filtro em tempo real: ao mexer em qualquer campo, refiltra a lista
+    // (não re-renderiza a barra, para não perder foco/seleção do usuário).
+    document.getElementById("ger-filtros").addEventListener("input", (e) => {
+      if (e.target.closest("#ff-de, #ff-ate, #ff-time, #ff-rodada, #ff-grupo")) {
+        lerFiltrosJogosDoDOM();
+        desenharListaJogos();
+      }
+    });
+
     document.getElementById("ger-modal").addEventListener("click", (e) => {
       const t = e.target.closest("[data-acao],[data-editar-jogo],[data-excluir-jogo],[data-editar-time],[data-excluir-time]");
       if (!t) return;
       if (t.dataset.acao === "novo-jogo") formJogo(null);
       else if (t.dataset.acao === "novo-time") formTime(null);
       else if (t.dataset.acao === "semear") semearNuvem();
+      else if (t.dataset.acao === "limpar-filtros") limparFiltrosJogos();
       else if (t.dataset.editarJogo != null) formJogo(Number(t.dataset.editarJogo));
       else if (t.dataset.excluirJogo != null) excluirJogo(Number(t.dataset.excluirJogo));
       else if (t.dataset.editarTime != null) formTime(Number(t.dataset.editarTime));

@@ -560,8 +560,8 @@ img { max-width: 100%; display: block; }
 /* A lista de opções do <select> é desenhada pelo navegador numa camada à
    parte (sem o fundo verde do site por trás) — por isso precisa de cor
    sólida própria, senão o rgba() acima vira cinza/branco lá dentro. */
-.campo select { color-scheme: dark; }
-.campo select option {
+.campo select, .ff select { color-scheme: dark; }
+.campo select option, .ff select option {
   background: var(--verde-900);
   color: var(--texto);
 }
@@ -569,6 +569,66 @@ img { max-width: 100%; display: block; }
 .campo--placar .placar-inputs { display: flex; align-items: center; gap: 10px; }
 .campo--placar .placar-inputs input { text-align: center; font-size: 1.3rem; font-weight: 700; font-family: var(--fonte-cond); }
 .campo--placar .placar-inputs span { font-size: 1.2rem; color: var(--texto-fraco); }
+
+/* =========================================================================
+   FILTROS DA LISTA DE JOGOS (compacto, colapsável)
+   ========================================================================= */
+.ger-filtros {
+  margin-bottom: 12px;
+  background: rgba(255,255,255,.03);
+  border: 1px solid var(--linha);
+  border-radius: 11px;
+  overflow: hidden;
+}
+.ger-filtros > summary {
+  cursor: pointer; list-style: none;
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 14px;
+  font-family: var(--fonte-cond); font-weight: 700; font-size: .92rem;
+  text-transform: uppercase; letter-spacing: .03em;
+  color: var(--texto-suave);
+  -webkit-user-select: none; user-select: none;
+}
+.ger-filtros > summary::-webkit-details-marker { display: none; }
+.ger-filtros > summary:hover { color: #fff; }
+.ger-filtros[open] > summary { color: #fff; border-bottom: 1px solid var(--linha); }
+.ger-filtros-lupa { font-size: .85rem; }
+.ger-filtros-seta { margin-left: auto; transition: transform .2s; color: var(--texto-fraco); }
+.ger-filtros[open] > summary .ger-filtros-seta { transform: rotate(180deg); }
+.ger-filtros-badge {
+  display: inline-grid; place-items: center;
+  min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px;
+  font-family: var(--fonte-cond); font-size: .72rem; font-weight: 700;
+  background: var(--dourado); color: var(--verde-950);
+}
+.ger-filtros-corpo { padding: 12px 14px; }
+.ger-filtros-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(125px, 1fr));
+  gap: 9px;
+}
+.ff { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.ff > label {
+  font-size: .7rem; font-weight: 700; letter-spacing: .03em; text-transform: uppercase;
+  color: var(--texto-fraco);
+}
+.ff input, .ff select {
+  width: 100%; padding: 7px 9px; border-radius: 8px;
+  background: rgba(0,0,0,.25); border: 1px solid var(--linha-forte); color: #fff;
+  font-family: var(--fonte-corpo); font-size: .82rem;
+}
+.ff input:focus, .ff select:focus { outline: none; border-color: var(--verde-brilho); }
+.ger-filtros-rodape {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  margin-top: 12px;
+}
+.ff-contagem { font-size: .78rem; color: var(--texto-fraco); }
+.ff-limpar {
+  cursor: pointer; border: 1px solid var(--linha-forte); background: rgba(255,255,255,.05);
+  color: var(--texto-suave); font-size: .78rem; font-weight: 600;
+  padding: 6px 12px; border-radius: 8px;
+}
+.ff-limpar:hover { color: #fff; background: rgba(255,255,255,.12); }
 
 .campo-escudo { display: flex; align-items: center; gap: 14px; margin-top: 2px; }
 .ft-preview {

@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Anton&family=Barlow+Condensed:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="assets/css/estilo.css?v=17">
+  <link rel="stylesheet" href="assets/css/estilo.css?v=18">
 </head>
 <body>
 
@@ -120,6 +120,28 @@
             <h4>Jogos cadastrados</h4>
             <button class="btn btn--verde" data-acao="novo-jogo">+ Novo jogo</button>
           </div>
+
+          <details class="ger-filtros" id="ger-filtros">
+            <summary>
+              <span class="ger-filtros-lupa">🔎</span> Filtrar jogos
+              <span class="ger-filtros-badge" id="ger-filtros-badge" hidden></span>
+              <span class="ger-filtros-seta" aria-hidden="true">▾</span>
+            </summary>
+            <div class="ger-filtros-corpo">
+              <div class="ger-filtros-grid">
+                <div class="ff"><label for="ff-de">De</label><input type="date" id="ff-de"></div>
+                <div class="ff"><label for="ff-ate">Até</label><input type="date" id="ff-ate"></div>
+                <div class="ff"><label for="ff-time">Time</label><select id="ff-time"></select></div>
+                <div class="ff"><label for="ff-rodada">Rodada</label><select id="ff-rodada"></select></div>
+                <div class="ff"><label for="ff-grupo">Grupo</label><select id="ff-grupo"></select></div>
+              </div>
+              <div class="ger-filtros-rodape">
+                <span class="ff-contagem" id="ff-contagem"></span>
+                <button type="button" class="ff-limpar" data-acao="limpar-filtros">Limpar filtros</button>
+              </div>
+            </div>
+          </details>
+
           <div id="ger-jogos-lista" class="ger-lista"></div>
           <div id="ger-form-jogo" class="ger-form"></div>
         </div>
@@ -137,8 +159,8 @@
     </div>
   </div>
 
-  <script defer src="assets/js/dados.js?v=17"></script>
-  <script type="module" async src="assets/js/db.js?v=17"></script>
-  <script defer src="assets/js/app.js?v=17"></script>
+  <script defer src="assets/js/dados.js?v=18"></script>
+  <script type="module" async src="assets/js/db.js?v=18"></script>
+  <script defer src="assets/js/app.js?v=18"></script>
 </body>
 </html>
