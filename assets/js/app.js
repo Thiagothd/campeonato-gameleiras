@@ -10,7 +10,7 @@
   "use strict";
 
   const IMG_TIMES = "assets/img/times/";
-  const CACHE_VER = "14"; // troque quando atualizar imagens/CSS/JS (força o navegador a rebaixar)
+  const CACHE_VER = "15"; // troque quando atualizar imagens/CSS/JS (força o navegador a rebaixar)
 
   function comVersao(base) {
     if (!base) return "";
@@ -370,29 +370,13 @@
         aviso.style.display = "flex";
       } else if (statusNuvem === "vazio") {
         aviso.className = "ger-aviso ger-aviso--vazio";
-        aviso.innerHTML = "<span>☁️ O banco de dados da nuvem ainda está vazio. Vá na aba <b>Nuvem</b> e envie os dados iniciais.</span>";
+        aviso.innerHTML = '<span>☁️ O banco de dados da nuvem está vazio.</span>' +
+          '<button type="button" class="btn-mini" data-acao="semear">Enviar dados iniciais</button>';
         aviso.style.display = "flex";
       } else {
         aviso.style.display = "none";
       }
     }
-
-    const seed = document.getElementById("ger-nuvem-seed");
-    if (seed) seed.style.display = bancoVazio ? "block" : "none";
-
-    const linha = document.getElementById("ger-nuvem-status-texto");
-    if (linha) {
-      const mapaLinha = {
-        conectando: "Conectando à nuvem…",
-        "ao-vivo": "✅ Conectado — as alterações aparecem para todos, na hora.",
-        erro: "🔴 Sem conexão com a nuvem no momento.",
-        vazio: "☁️ Conectado, mas o banco ainda está vazio.",
-      };
-      linha.textContent = mapaLinha[statusNuvem] || "";
-    }
-
-    const btnSair = document.getElementById("ger-btn-sair");
-    if (btnSair) btnSair.style.display = logado ? "inline-block" : "none";
   }
 
   /* =======================================================================
@@ -437,12 +421,6 @@
     modalAberto = false;
     document.getElementById("ger-modal").classList.remove("aberto");
     document.body.classList.remove("sem-scroll");
-  }
-
-  async function sairGerenciador() {
-    if (!confirm("Sair do modo Gerenciar neste aparelho? Na próxima vez vai pedir a senha de novo.")) return;
-    try { await window.CampDB.sair(); } catch (e) { /* ignora */ }
-    fecharGerenciador();
   }
 
   function renderGerenciador() {
@@ -708,35 +686,6 @@
     if (ok) { alert("Pronto! O site agora está ao vivo para todo mundo."); renderGerenciador(); }
   }
 
-  /* ---------- Backup (baixar cópia dos dados) ---------- */
-  function gerarDadosJs() {
-    const j2 = (obj) => JSON.stringify(obj, null, 2);
-    return `/* =========================================================================
-   BACKUP DOS DADOS — gerado pelo Gerenciador em ${STATE.config.temporada}
-   Isto é uma cópia de segurança. Os dados reais do site ficam na nuvem
-   (Firebase); este arquivo NÃO precisa ser publicado em lugar nenhum.
-   ========================================================================= */
-
-const CAMPEONATO = ${j2(STATE.config)};
-
-const GRUPOS = ${j2(STATE.grupos)};
-
-const TIMES = ${j2(STATE.times)};
-
-const JOGOS = ${j2(STATE.jogos)};
-`;
-  }
-
-  function exportarDadosJs() {
-    const blob = new Blob([gerarDadosJs()], { type: "text/javascript;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    const data = new Date().toISOString().slice(0, 10);
-    a.href = url; a.download = `backup-campeonato-${data}.js`;
-    document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-  }
-
   /* ---------- eventos do gerenciador ---------- */
   function initGerenciador() {
     document.getElementById("btn-gerenciar").addEventListener("click", abrirGerenciador);
@@ -753,9 +702,7 @@ const JOGOS = ${j2(STATE.jogos)};
       if (!t) return;
       if (t.dataset.acao === "novo-jogo") formJogo(null);
       else if (t.dataset.acao === "novo-time") formTime(null);
-      else if (t.dataset.acao === "exportar") exportarDadosJs();
       else if (t.dataset.acao === "semear") semearNuvem();
-      else if (t.dataset.acao === "sair") sairGerenciador();
       else if (t.dataset.editarJogo != null) formJogo(Number(t.dataset.editarJogo));
       else if (t.dataset.excluirJogo != null) excluirJogo(Number(t.dataset.excluirJogo));
       else if (t.dataset.editarTime != null) formTime(Number(t.dataset.editarTime));
