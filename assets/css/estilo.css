@@ -557,6 +557,14 @@ img { max-width: 100%; display: block; }
   font-family: var(--fonte-corpo); font-size: .95rem;
 }
 .campo input:focus, .campo select:focus { outline: none; border-color: var(--verde-brilho); }
+/* A lista de opções do <select> é desenhada pelo navegador numa camada à
+   parte (sem o fundo verde do site por trás) — por isso precisa de cor
+   sólida própria, senão o rgba() acima vira cinza/branco lá dentro. */
+.campo select { color-scheme: dark; }
+.campo select option {
+  background: var(--verde-900);
+  color: var(--texto);
+}
 .campo-linha { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
 .campo--placar .placar-inputs { display: flex; align-items: center; gap: 10px; }
 .campo--placar .placar-inputs input { text-align: center; font-size: 1.3rem; font-weight: 700; font-family: var(--fonte-cond); }
