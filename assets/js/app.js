@@ -10,7 +10,7 @@
   "use strict";
 
   const IMG_TIMES = "assets/img/times/";
-  const CACHE_VER = "16"; // troque quando atualizar imagens/CSS/JS (força o navegador a rebaixar)
+  const CACHE_VER = "17"; // troque quando atualizar imagens/CSS/JS (força o navegador a rebaixar)
 
   function comVersao(base) {
     if (!base) return "";
@@ -85,12 +85,20 @@
     return `hsl(${h}, 45%, 38%)`;
   }
 
+  // Escudo pode ser um arquivo local antigo ("raposa.webp") ou uma imagem
+  // enviada pelo Gerenciador e guardada embutida nos dados ("data:...").
+  function srcEscudo(escudo) {
+    if (!escudo) return "";
+    if (escudo.indexOf("http") === 0 || escudo.indexOf("data:") === 0 || escudo.indexOf("blob:") === 0) return escudo;
+    return comVersao(IMG_TIMES + escudo);
+  }
+
   function escudoHTML(time, tam) {
     const cls = "escudo escudo--" + tam + (time && time.chip ? " escudo--chip" : "");
     if (time && time.escudo) {
       const ini = iniciais(time.nome);
       return `<span class="${cls}" style="--cor:${corDoTime(time.id)}">
-        <img src="${comVersao(IMG_TIMES + time.escudo)}" alt="${time.nome}" loading="lazy"
+        <img src="${srcEscudo(time.escudo)}" alt="${time.nome}" loading="lazy"
              onerror="this.parentElement.classList.add('escudo--txt');this.parentElement.textContent='${ini}';"></span>`;
     }
     const cor = time ? corDoTime(time.id) : "#5a6b60";
@@ -603,17 +611,28 @@
 
   function formTime(idx) {
     const t = idx != null ? STATE.times[idx] : { id: "", nome: "", grupo: STATE.grupos[0] && STATE.grupos[0].id, escudo: "" };
+    const previewSrc = srcEscudo(t.escudo);
     document.getElementById("ger-form-time").innerHTML = `
       <h4 class="ger-form-tit">${idx != null ? "Editar time" : "Novo time"}</h4>
       <input type="hidden" id="ft-idx" value="${idx != null ? idx : ""}">
+      <input type="hidden" id="ft-escudo" value="${escapeHtml(t.escudo)}">
       <div class="campo"><label>Nome do time</label><input type="text" id="ft-nome" value="${escapeHtml(t.nome)}" placeholder="Ex.: Raposa F.C."></div>
       <div class="campo-linha">
         <div class="campo"><label>Apelido/ID <small>(sem espaço/acento)</small></label>
           <input type="text" id="ft-id" value="${escapeHtml(t.id)}" placeholder="raposa" ${idx != null ? "readonly" : ""}></div>
         <div class="campo"><label>Grupo</label><select id="ft-grupo">${opcoesGrupos(t.grupo)}</select></div>
       </div>
-      <div class="campo"><label>Arquivo do escudo <small>(em assets/img/times/)</small></label>
-        <input type="text" id="ft-escudo" value="${escapeHtml(t.escudo)}" placeholder="raposa.png (opcional)"></div>
+      <div class="campo">
+        <label>Escudo do time</label>
+        <div class="campo-escudo">
+          <span class="ft-preview" id="ft-preview">${previewSrc ? `<img src="${previewSrc}" alt="">` : escapeHtml(iniciais(t.nome || "Time"))}</span>
+          <div class="campo-escudo-acoes">
+            <label class="btn btn--ghost btn--arquivo" for="ft-arquivo">Escolher imagem</label>
+            <input type="file" accept="image/*" id="ft-arquivo" class="campo-arquivo-input">
+            <button type="button" class="btn-mini btn-mini--del" id="ft-remover" ${t.escudo ? "" : "hidden"}>Remover escudo</button>
+          </div>
+        </div>
+      </div>
       <div class="ger-form-botoes">
         <button class="btn btn--verde" id="ft-salvar">Salvar time</button>
         <button class="btn btn--ghost" id="ft-cancelar">Cancelar</button>
@@ -623,6 +642,8 @@
     document.querySelector('[data-acao="novo-time"]').style.display = "none";
     document.getElementById("ft-salvar").onclick = salvarFormTime;
     document.getElementById("ft-cancelar").onclick = fecharFormTime;
+    document.getElementById("ft-arquivo").onchange = aoEscolherEscudo;
+    document.getElementById("ft-remover").onclick = removerEscudoEscolhido;
   }
 
   function fecharFormTime() {
@@ -630,6 +651,66 @@
     document.getElementById("ger-times-lista").style.display = "";
     document.querySelector('[data-acao="novo-time"]').style.display = "";
     renderGerTimes();
+  }
+
+  /* ---------- Escudo enviado do aparelho: comprime no navegador e guarda
+     como imagem embutida (data:) direto no time — sem precisar de servidor
+     de arquivos. Reduz qualidade/tamanho até caber num limite confortável. */
+  function carregarImagem(file) {
+    return new Promise((resolve, reject) => {
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => { URL.revokeObjectURL(url); resolve(img); };
+      img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("Arquivo de imagem inválido.")); };
+      img.src = url;
+    });
+  }
+
+  function desenharCanvas(img, lado) {
+    const escala = Math.min(1, lado / Math.max(img.naturalWidth, img.naturalHeight));
+    const w = Math.max(1, Math.round(img.naturalWidth * escala));
+    const h = Math.max(1, Math.round(img.naturalHeight * escala));
+    const canvas = document.createElement("canvas");
+    canvas.width = w; canvas.height = h;
+    canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+    return canvas;
+  }
+
+  async function processarImagemEscudo(file) {
+    const LIMITE_BYTES = 200 * 1024; // ~200KB em base64 por escudo (margem confortável no documento)
+    const img = await carregarImagem(file);
+    let lado = 320, qualidade = 0.85;
+    for (let i = 0; i < 6; i++) {
+      const dataUrl = desenharCanvas(img, lado).toDataURL("image/webp", qualidade);
+      if (dataUrl.length * 0.75 <= LIMITE_BYTES || (lado <= 96 && qualidade <= 0.4)) return dataUrl;
+      if (qualidade > 0.4) qualidade = Math.max(0.4, qualidade - 0.15);
+      else lado = Math.round(lado * 0.75);
+    }
+    return null;
+  }
+
+  async function aoEscolherEscudo(e) {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) { alert("Escolha um arquivo de imagem (PNG, JPG ou WEBP)."); e.target.value = ""; return; }
+    if (file.size > 15 * 1024 * 1024) { alert("Essa imagem é muito grande (máximo 15MB)."); e.target.value = ""; return; }
+    try {
+      const dataUrl = await processarImagemEscudo(file);
+      if (!dataUrl) { alert("Não foi possível deixar essa imagem pequena o bastante. Tente outra."); return; }
+      document.getElementById("ft-escudo").value = dataUrl;
+      document.getElementById("ft-preview").innerHTML = `<img src="${dataUrl}" alt="">`;
+      document.getElementById("ft-remover").hidden = false;
+    } catch (err) {
+      alert("Não foi possível carregar essa imagem. Tente outro arquivo.");
+    }
+  }
+
+  function removerEscudoEscolhido() {
+    document.getElementById("ft-escudo").value = "";
+    document.getElementById("ft-arquivo").value = "";
+    const nome = document.getElementById("ft-nome").value;
+    document.getElementById("ft-preview").innerHTML = escapeHtml(iniciais(nome || "Time"));
+    document.getElementById("ft-remover").hidden = true;
   }
 
   function slug(s) {
