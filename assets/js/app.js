@@ -316,6 +316,66 @@
   }
 
   /* =======================================================================
+     ARTILHEIROS (ranking somado dos gols cadastrados nos jogos)
+     ======================================================================= */
+  let filtroArtGrupo = "todos";
+
+  function calcularArtilheiros() {
+    const idx = porId();
+    const mapa = {}; // chave: time + "::" + nome (minúsculo) — separa xarás de times diferentes
+    STATE.jogos.forEach((j) => {
+      (j.gols || []).forEach((g) => {
+        const nome = (g.jogador || "").trim();
+        const qtd = Number(g.gols) || 0;
+        if (!nome || qtd <= 0) return;
+        const time = g.time || "";
+        const chave = time + "::" + nome.toLowerCase();
+        if (!mapa[chave]) mapa[chave] = { jogador: nome, time, grupo: (idx[time] && idx[time].grupo) || "", gols: 0 };
+        mapa[chave].gols += qtd;
+      });
+    });
+    const lista = Object.values(mapa);
+    lista.sort((a, b) => b.gols - a.gols || a.jogador.localeCompare(b.jogador));
+    return lista;
+  }
+
+  function renderChipsArtilheiros() {
+    const chips = [{ id: "todos", nome: "Todos" }]
+      .concat(STATE.grupos.map((g) => ({ id: g.id, nome: "Grupo " + g.id })));
+    document.getElementById("filtro-grupos-art").innerHTML = chips.map((c) =>
+      `<button class="chip ${filtroArtGrupo === c.id ? "ativo" : ""}" data-grupo-art="${c.id}">${c.nome}</button>`
+    ).join("");
+  }
+
+  function renderArtilheiros() {
+    renderChipsArtilheiros();
+    const idx = porId();
+    let lista = calcularArtilheiros();
+    if (filtroArtGrupo !== "todos") lista = lista.filter((a) => a.grupo === filtroArtGrupo);
+
+    // posição com empate no mesmo número de gols (mesma posição)
+    let posAtual = 0, golsAnt = null;
+    const html = lista.map((a, i) => {
+      if (a.gols !== golsAnt) { posAtual = i + 1; golsAnt = a.gols; }
+      const time = idx[a.time];
+      const medalha = posAtual <= 3 ? `art-pos--m${posAtual}` : "";
+      return `
+        <div class="art-item">
+          <span class="art-pos ${medalha}">${posAtual}º</span>
+          ${escudoHTML(time, "sm")}
+          <span class="art-nome">${escapeHtml(a.jogador)}
+            <small>${escapeHtml(time ? time.nome : a.time)}</small>
+          </span>
+          <span class="art-gols">${a.gols}<small>${a.gols === 1 ? "gol" : "gols"}</small></span>
+        </div>`;
+    }).join("");
+
+    document.getElementById("lista-artilheiros").innerHTML = html ||
+      '<p class="vazio">Nenhum gol registrado ainda. Cadastre quem marcou ao editar um jogo.</p>';
+    document.getElementById("qtd-artilheiros").textContent = lista.length;
+  }
+
+  /* =======================================================================
      CABEÇALHO
      ======================================================================= */
   function renderCabecalho() {
@@ -351,6 +411,12 @@
       if (!b) return;
       filtroGrupo = b.dataset.grupo;
       renderJogos();
+    });
+    document.getElementById("filtro-grupos-art").addEventListener("click", (e) => {
+      const b = e.target.closest(".chip");
+      if (!b) return;
+      filtroArtGrupo = b.dataset.grupoArt;
+      renderArtilheiros();
     });
   }
 
@@ -634,6 +700,12 @@
         <div class="campo"><label>Hora</label><input type="time" id="fj-hora" value="${val(j.hora)}"></div>
       </div>
       <div class="campo"><label>Local</label><input type="text" id="fj-local" value="${escapeHtml(val(j.local))}" placeholder="Arena Jatobá"></div>
+      <div class="campo campo--gols">
+        <label>Quem fez os gols <small>(opcional — alimenta os Artilheiros)</small></label>
+        <datalist id="fj-datalist-jogadores"></datalist>
+        <div id="fj-gols-lista" class="gols-lista"></div>
+        <button type="button" class="btn-mini" id="fj-add-gol">+ Adicionar gol</button>
+      </div>
       <div class="ger-form-botoes">
         <button class="btn btn--verde" id="fj-salvar">Salvar jogo</button>
         <button class="btn btn--ghost" id="fj-cancelar">Cancelar</button>
@@ -643,8 +715,77 @@
     document.getElementById("ger-filtros").style.display = "none";
     document.querySelector('[data-acao="novo-jogo"]').style.display = "none";
 
+    golsForm = (j.gols || []).map((g) => ({ time: g.time || "", jogador: g.jogador || "", gols: Number(g.gols) || 1 }));
+    atualizarDatalistJogadores();
+    renderGolsForm();
+    document.getElementById("fj-add-gol").onclick = adicionarGol;
+    document.getElementById("fj-mandante").addEventListener("change", aoMudarTimeDoJogo);
+    document.getElementById("fj-visitante").addEventListener("change", aoMudarTimeDoJogo);
+
     document.getElementById("fj-salvar").onclick = salvarFormJogo;
     document.getElementById("fj-cancelar").onclick = () => { fecharFormJogo(); };
+  }
+
+  /* ---------- Sub-formulário: gols marcados no jogo ---------- */
+  let golsForm = [];
+
+  function jogadoresDosTimes(idMandante, idVisitante) {
+    const idx = porId();
+    const nomes = [];
+    [idMandante, idVisitante].forEach((id) => {
+      const t = idx[id];
+      if (t && Array.isArray(t.jogadores)) t.jogadores.forEach((n) => { if (n && !nomes.includes(n)) nomes.push(n); });
+    });
+    return nomes;
+  }
+
+  function atualizarDatalistJogadores() {
+    const dl = document.getElementById("fj-datalist-jogadores");
+    if (!dl) return;
+    const m = document.getElementById("fj-mandante").value;
+    const v = document.getElementById("fj-visitante").value;
+    dl.innerHTML = jogadoresDosTimes(m, v).map((n) => `<option value="${escapeHtml(n)}"></option>`).join("");
+  }
+
+  function opcoesTimesDoJogo(sel) {
+    const m = document.getElementById("fj-mandante").value;
+    const v = document.getElementById("fj-visitante").value;
+    return [m, v].filter((x, i, a) => x && a.indexOf(x) === i)
+      .map((id) => `<option value="${id}" ${id === sel ? "selected" : ""}>${escapeHtml(nomeTime(id))}</option>`).join("");
+  }
+
+  function renderGolsForm() {
+    const cont = document.getElementById("fj-gols-lista");
+    if (!cont) return;
+    cont.innerHTML = golsForm.map((g, i) => `
+      <div class="gol-row">
+        <select class="gol-time" data-i="${i}">${opcoesTimesDoJogo(g.time)}</select>
+        <input type="text" class="gol-jogador" data-i="${i}" list="fj-datalist-jogadores" value="${escapeHtml(g.jogador || "")}" placeholder="Jogador" autocomplete="off">
+        <input type="number" min="1" class="gol-qtd" data-i="${i}" value="${g.gols || 1}" aria-label="Gols">
+        <button type="button" class="btn-mini btn-mini--del gol-remover" data-i="${i}" aria-label="Remover">✕</button>
+      </div>`).join("");
+    cont.querySelectorAll(".gol-time").forEach((el) => el.onchange = () => { golsForm[Number(el.dataset.i)].time = el.value; });
+    cont.querySelectorAll(".gol-jogador").forEach((el) => el.oninput = () => { golsForm[Number(el.dataset.i)].jogador = el.value; });
+    cont.querySelectorAll(".gol-qtd").forEach((el) => el.oninput = () => { golsForm[Number(el.dataset.i)].gols = Number(el.value) || 0; });
+    cont.querySelectorAll(".gol-remover").forEach((el) => el.onclick = () => { golsForm.splice(Number(el.dataset.i), 1); renderGolsForm(); });
+  }
+
+  function adicionarGol() {
+    const m = document.getElementById("fj-mandante").value;
+    golsForm.push({ time: m || "", jogador: "", gols: 1 });
+    renderGolsForm();
+    // foca no campo de jogador da linha recém-criada
+    const inputs = document.querySelectorAll("#fj-gols-lista .gol-jogador");
+    if (inputs.length) inputs[inputs.length - 1].focus();
+  }
+
+  function aoMudarTimeDoJogo() {
+    // se um gol estava num time que saiu do confronto, joga pro mandante atual
+    const m = document.getElementById("fj-mandante").value;
+    const v = document.getElementById("fj-visitante").value;
+    golsForm.forEach((g) => { if (g.time !== m && g.time !== v) g.time = m; });
+    atualizarDatalistJogadores();
+    renderGolsForm();
   }
 
   function fecharFormJogo() {
@@ -677,6 +818,11 @@
       hora: document.getElementById("fj-hora").value,
       local: document.getElementById("fj-local").value.trim(),
     };
+
+    const gols = golsForm
+      .map((g) => ({ time: g.time, jogador: (g.jogador || "").trim(), gols: Number(g.gols) || 0 }))
+      .filter((g) => g.time && g.jogador && g.gols > 0);
+    if (gols.length) jogo.gols = gols;
 
     STATE.jogos = STATE.jogos.slice();
     if (idxRaw === "") STATE.jogos.push(jogo);
@@ -723,8 +869,11 @@
       `<option value="${g.id}" ${g.id === sel ? "selected" : ""}>${escapeHtml(g.nome)}</option>`).join("");
   }
 
+  let elencoForm = []; // jogadores do time sendo editado
+
   function formTime(idx) {
     const t = idx != null ? STATE.times[idx] : { id: "", nome: "", grupo: STATE.grupos[0] && STATE.grupos[0].id, escudo: "" };
+    elencoForm = Array.isArray(t.jogadores) ? t.jogadores.slice() : [];
     const previewSrc = srcEscudo(t.escudo);
     document.getElementById("ger-form-time").innerHTML = `
       <h4 class="ger-form-tit">${idx != null ? "Editar time" : "Novo time"}</h4>
@@ -747,6 +896,14 @@
           </div>
         </div>
       </div>
+      <div class="campo">
+        <label>Elenco (jogadores) <small>(opcional — usado para marcar os gols)</small></label>
+        <div class="elenco-add">
+          <input type="text" id="ft-jogador" placeholder="Nome do jogador" autocomplete="off">
+          <button type="button" class="btn-mini" id="ft-add-jogador">+ Adicionar</button>
+        </div>
+        <div id="ft-elenco" class="elenco-chips"></div>
+      </div>
       <div class="ger-form-botoes">
         <button class="btn btn--verde" id="ft-salvar">Salvar time</button>
         <button class="btn btn--ghost" id="ft-cancelar">Cancelar</button>
@@ -758,6 +915,36 @@
     document.getElementById("ft-cancelar").onclick = fecharFormTime;
     document.getElementById("ft-arquivo").onchange = aoEscolherEscudo;
     document.getElementById("ft-remover").onclick = removerEscudoEscolhido;
+    document.getElementById("ft-add-jogador").onclick = adicionarJogadorElenco;
+    document.getElementById("ft-jogador").addEventListener("keydown", (e) => {
+      if (e.key === "Enter") { e.preventDefault(); adicionarJogadorElenco(); }
+    });
+    renderElencoChips();
+  }
+
+  function renderElencoChips() {
+    const cont = document.getElementById("ft-elenco");
+    if (!cont) return;
+    cont.innerHTML = elencoForm.length
+      ? elencoForm.map((nome, i) =>
+          `<span class="elenco-chip">${escapeHtml(nome)}<button type="button" data-remover-jogador="${i}" aria-label="Remover">✕</button></span>`).join("")
+      : '<span class="elenco-vazio">Nenhum jogador cadastrado.</span>';
+    cont.querySelectorAll("[data-remover-jogador]").forEach((b) =>
+      b.onclick = () => { elencoForm.splice(Number(b.dataset.removerJogador), 1); renderElencoChips(); });
+  }
+
+  function adicionarJogadorElenco() {
+    const inp = document.getElementById("ft-jogador");
+    const nome = inp.value.trim();
+    if (!nome) return;
+    if (elencoForm.some((n) => n.toLowerCase() === nome.toLowerCase())) {
+      alert("Esse jogador já está no elenco.");
+    } else {
+      elencoForm.push(nome);
+      renderElencoChips();
+    }
+    inp.value = "";
+    inp.focus();
   }
 
   function fecharFormTime() {
@@ -849,14 +1036,15 @@
     if (!nome) { alert("Digite o nome do time."); return; }
     if (!id) { alert("Digite um apelido/ID válido."); return; }
 
+    const jogadores = elencoForm.slice();
     STATE.times = STATE.times.map((t) => Object.assign({}, t));
 
     if (idxRaw === "") {
       if (STATE.times.some((t) => t.id === id)) { alert("Já existe um time com esse ID."); return; }
-      STATE.times.push({ id, nome, grupo, escudo });
+      STATE.times.push({ id, nome, grupo, escudo, jogadores });
     } else {
       const t = STATE.times[Number(idxRaw)];
-      t.nome = nome; t.grupo = grupo; t.escudo = escudo;
+      t.nome = nome; t.grupo = grupo; t.escudo = escudo; t.jogadores = jogadores;
     }
 
     const ok = await salvarNuvem(document.getElementById("ft-salvar"));
@@ -982,6 +1170,7 @@
     renderCabecalho();
     renderClassificacao();
     renderJogos();
+    renderArtilheiros();
     renderTimes();
   }
 
