@@ -427,7 +427,19 @@ img { max-width: 100%; display: block; }
   border-top: 1px solid var(--linha); margin-top: 20px;
   color: var(--texto-suave);
 }
-.rodape-logo { width: 66px; height: 66px; object-fit: contain; margin: 0 auto 12px; opacity: .95; }
+.footer-logos-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  max-width: 100%;
+  margin: 0 auto 14px;
+}
+.footer-speedline-logo {
+  width: clamp(158px, 42vw, 220px);
+  max-width: 100%;
+  height: auto;
+  object-fit: contain;
+}
 .rodape p { margin: 2px 0; font-size: .92rem; }
 .rodape-sub { color: var(--texto-fraco); font-style: italic; font-size: .84rem; }
 
@@ -658,6 +670,70 @@ img { max-width: 100%; display: block; }
 .btn--ghost { background: rgba(255,255,255,.06); color: var(--texto); border: 1px solid var(--linha-forte); }
 .btn--ghost:hover { background: rgba(255,255,255,.12); }
 
+/* =========================================================================
+   ARTILHEIROS (ranking público)
+   ========================================================================= */
+.artilheiros-lista { display: flex; flex-direction: column; gap: 8px; }
+.art-item {
+  display: flex; align-items: center; gap: 12px;
+  background: linear-gradient(180deg, var(--verde-850), var(--verde-900));
+  border: 1px solid var(--linha-forte); border-radius: 12px;
+  padding: 10px 14px;
+}
+.art-pos {
+  flex: 0 0 auto; min-width: 34px; text-align: center;
+  font-family: var(--fonte-cond); font-weight: 700; font-size: 1rem;
+  color: var(--texto-suave);
+}
+.art-pos--m1 { color: #f7d046; }   /* ouro */
+.art-pos--m2 { color: #cfd6dd; }   /* prata */
+.art-pos--m3 { color: #e0a06a; }   /* bronze */
+.art-nome {
+  flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 1.2;
+  font-weight: 700; color: #fff; font-size: .98rem;
+}
+.art-nome small { font-weight: 500; font-size: .76rem; color: var(--texto-fraco); }
+.art-gols {
+  flex: 0 0 auto; display: flex; flex-direction: column; align-items: center; line-height: 1;
+  font-family: var(--fonte-cond); font-weight: 700; font-size: 1.5rem; color: var(--dourado-claro);
+}
+.art-gols small { font-size: .62rem; font-weight: 600; color: var(--texto-fraco); letter-spacing: .03em; text-transform: uppercase; }
+
+/* Elenco (jogadores) na edição do time */
+.elenco-add { display: flex; gap: 8px; }
+.elenco-add input {
+  flex: 1; min-width: 0; padding: 9px 11px; border-radius: 9px;
+  background: rgba(0,0,0,.25); border: 1px solid var(--linha-forte); color: #fff;
+  font-family: var(--fonte-corpo); font-size: .9rem;
+}
+.elenco-add input:focus { outline: none; border-color: var(--verde-brilho); }
+.elenco-add .btn-mini { flex: 0 0 auto; }
+.elenco-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.elenco-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: rgba(255,255,255,.06); border: 1px solid var(--linha-forte);
+  border-radius: 999px; padding: 4px 6px 4px 12px; font-size: .84rem; color: #fff;
+}
+.elenco-chip button {
+  cursor: pointer; border: none; background: rgba(255,255,255,.1); color: var(--texto-suave);
+  width: 20px; height: 20px; border-radius: 50%; font-size: .7rem; line-height: 1;
+}
+.elenco-chip button:hover { background: rgba(229,72,77,.3); color: #fff; }
+.elenco-vazio { font-size: .82rem; color: var(--texto-fraco); font-style: italic; }
+
+/* Gols marcados na edição do jogo */
+.gols-lista { display: flex; flex-direction: column; gap: 8px; margin-bottom: 8px; }
+.gol-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr) 56px auto; gap: 6px; align-items: center; }
+.gol-row select, .gol-row input {
+  width: 100%; padding: 8px 8px; border-radius: 8px;
+  background: rgba(0,0,0,.25); border: 1px solid var(--linha-forte); color: #fff;
+  font-family: var(--fonte-corpo); font-size: .84rem;
+}
+.gol-row select { color-scheme: dark; }
+.gol-row select option { background: var(--verde-900); color: var(--texto); }
+.gol-row .gol-qtd { text-align: center; }
+.gol-row input:focus, .gol-row select:focus { outline: none; border-color: var(--verde-brilho); }
+.gol-remover { padding: 7px 10px; }
 
 /* =========================================================================
    RESPONSIVO
@@ -700,8 +776,9 @@ img { max-width: 100%; display: block; }
   .camp-slogan { font-size: .92rem; }
 
   .conteudo { padding: 22px 12px 54px; }
-  .abas-inner { gap: 5px; padding: 8px 10px; }
-  .aba-btn { font-size: .78rem; padding: 9px 4px; letter-spacing: .01em; }
+  .abas-inner { gap: 4px; padding: 8px 8px; }
+  .aba-btn { font-size: .72rem; padding: 9px 3px; letter-spacing: 0; white-space: nowrap; }
+  .gol-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr) 48px auto; gap: 5px; }
 
   /* tabela cabe sem cortar */
   .tabela .hide-sm { display: none; }
@@ -722,7 +799,7 @@ img { max-width: 100%; display: block; }
 }
 
 @media (max-width: 380px) {
-  .aba-btn { font-size: .72rem; }
+  .aba-btn { font-size: .64rem; padding: 9px 2px; }
   .grade-times { grid-template-columns: repeat(2, 1fr); }
 }
 @media (min-width: 900px) {

@@ -1,0 +1,36 @@
+# Keep the project root as the Pages upload directory, but do not publish
+# repository, deployment, or legacy hosting files as public assets.
+.git/
+.gitignore
+.assetsignore
+.wrangler/
+node_modules/
+.env
+.env.*
+
+wrangler.toml
+deploy-cloudflare-pages.ps1
+
+.firebaserc
+firebase.json
+firestore.rules
+LEIA-ME.md
+campeonato-teste.html
+
+assets/img/Esporte/
+assets/img/Esporte.zip
+assets/img/*.png
+assets/img/*.jpg
+assets/img/*.jpeg
+assets/img/times/*.png
+assets/img/times/*.jpg
+assets/img/times/*.jpeg
+# ...exceto a logo do rodapé, que é usada de verdade no site publicado:
+!assets/img/LogoSemFundo.png
+
+# Arquivos de preview/demo gerados localmente (dados fictícios) — nunca publicar:
+preview-*.html
+campeonato-teste.html
+
+*.log
+*.zip

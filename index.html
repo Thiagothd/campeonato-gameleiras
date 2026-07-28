@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Anton&family=Barlow+Condensed:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="assets/css/estilo.css?v=21">
+  <link rel="stylesheet" href="assets/css/estilo.css?v=25">
 </head>
 <body>
 
@@ -30,6 +30,7 @@
     <div class="abas-inner">
       <button class="aba-btn ativo" data-alvo="painel-classificacao"><span>Classificação</span></button>
       <button class="aba-btn" data-alvo="painel-jogos"><span>Jogos</span></button>
+      <button class="aba-btn" data-alvo="painel-artilheiros"><span>Artilheiros</span></button>
       <button class="aba-btn" data-alvo="painel-times"><span>Times</span></button>
     </div>
   </nav>
@@ -65,6 +66,16 @@
       </div>
     </section>
 
+    <!-- ===================== ARTILHEIROS ===================== -->
+    <section id="painel-artilheiros" class="painel">
+      <div class="secao-titulo">
+        <h2>Artilheiros</h2>
+        <span class="contador"><span id="qtd-artilheiros">0</span> jogadores</span>
+      </div>
+      <div id="filtro-grupos-art" class="filtro-grupos"></div>
+      <div id="lista-artilheiros" class="artilheiros-lista"></div>
+    </section>
+
     <!-- ===================== TIMES ===================== -->
     <section id="painel-times" class="painel">
       <div class="secao-titulo">
@@ -77,7 +88,9 @@
   </main>
 
   <footer class="rodape">
-    <img src="assets/img/campeonato.webp" alt="" class="rodape-logo" onerror="this.remove()">
+    <div class="footer-logos-container">
+      <img src="assets/img/LogoSemFundo.png" alt="Logo Speedline" class="footer-speedline-logo" loading="lazy" onerror="this.remove()">
+    </div>
     <p><b>Campeonato Municipal de Futebol de Gameleiras</b></p>
     <p class="rodape-sub">Futebol une histórias, famílias e gerações.</p>
   </footer>
@@ -164,8 +177,8 @@
     </div>
   </div>
 
-  <script defer src="assets/js/dados.js?v=21"></script>
-  <script type="module" async src="assets/js/db.js?v=21"></script>
-  <script defer src="assets/js/app.js?v=21"></script>
+  <script defer src="assets/js/dados.js?v=25"></script>
+  <script type="module" async src="assets/js/db.js?v=25"></script>
+  <script defer src="assets/js/app.js?v=25"></script>
 </body>
 </html>
