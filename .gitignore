@@ -7,6 +7,8 @@ assets/img/*.jpeg
 assets/img/times/*.png
 assets/img/times/*.jpg
 assets/img/times/*.jpeg
+# ...exceto a logo do rodapé, que é usada de verdade no site publicado:
+!assets/img/LogoSemFundo.png
 
 # Arquivo de teste (gerado)
 campeonato-teste.html

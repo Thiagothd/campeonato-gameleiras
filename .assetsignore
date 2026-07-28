@@ -25,6 +25,12 @@ assets/img/*.jpeg
 assets/img/times/*.png
 assets/img/times/*.jpg
 assets/img/times/*.jpeg
+# ...exceto a logo do rodapé, que é usada de verdade no site publicado:
+!assets/img/LogoSemFundo.png
+
+# Arquivos de preview/demo gerados localmente (dados fictícios) — nunca publicar:
+preview-*.html
+campeonato-teste.html
 
 *.log
 *.zip

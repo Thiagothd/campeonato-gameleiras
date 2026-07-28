@@ -10,7 +10,7 @@
   "use strict";
 
   const IMG_TIMES = "assets/img/times/";
-  const CACHE_VER = "21"; // troque quando atualizar imagens/CSS/JS (força o navegador a rebaixar)
+  const CACHE_VER = "25"; // troque quando atualizar imagens/CSS/JS (força o navegador a rebaixar)
 
   function comVersao(base) {
     if (!base) return "";
