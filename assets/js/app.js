@@ -10,7 +10,7 @@
   "use strict";
 
   const IMG_TIMES = "assets/img/times/";
-  const CACHE_VER = "25"; // troque quando atualizar imagens/CSS/JS (força o navegador a rebaixar)
+  const CACHE_VER = "27"; // troque quando atualizar imagens/CSS/JS (força o navegador a rebaixar)
 
   function comVersao(base) {
     if (!base) return "";
@@ -149,20 +149,32 @@
     return lista;
   }
 
-  function tabelaGrupoHTML(grupo) {
-    const lista = calcularGrupo(grupo.id);
+  function calcularMelhoresTerceiros(classificacoes) {
+    const terceiros = STATE.grupos.map((grupo) => {
+      const terceiro = classificacoes[grupo.id] && classificacoes[grupo.id][2];
+      return terceiro ? { id: terceiro.id, pts: terceiro.pts, sg: terceiro.sg } : null;
+    }).filter(Boolean);
+
+    terceiros.sort((a, b) => b.pts - a.pts || b.sg - a.sg);
+    return new Set(terceiros.slice(0, 2).map((time) => time.id));
+  }
+
+  function tabelaGrupoHTML(grupo, lista, melhoresTerceiros) {
     const classificam = STATE.config.classificadosPorGrupo || 2;
     if (!lista.length) return "";
 
     const linhas = lista.map((t, i) => {
       const pos = i + 1;
-      const zona = pos <= classificam ? "zona-classificacao" : "";
+      const melhorTerceiro = pos === 3 && melhoresTerceiros.has(t.id);
+      const zona = pos <= classificam
+        ? "zona-classificacao"
+        : melhorTerceiro ? "zona-melhor-terceiro" : "";
       const idx = porId()[t.id];
       const sg = t.sg > 0 ? "+" + t.sg : t.sg;
       const sgCls = t.sg > 0 ? "sg-pos" : t.sg < 0 ? "sg-neg" : "";
       return `
         <tr class="${zona}">
-          <td class="col-pos"><span class="pos">${pos}</span></td>
+          <td class="col-pos"><span class="pos">${pos}${melhorTerceiro ? '<span class="sr-only">, melhor terceiro classificado</span>' : ""}</span></td>
           <td class="col-time">
             <div class="time-cell">
               ${escudoHTML(idx, "sm")}
@@ -209,7 +221,13 @@
   }
 
   function renderClassificacao() {
-    const html = STATE.grupos.map(tabelaGrupoHTML).join("");
+    const classificacoes = Object.fromEntries(
+      STATE.grupos.map((grupo) => [grupo.id, calcularGrupo(grupo.id)])
+    );
+    const melhoresTerceiros = calcularMelhoresTerceiros(classificacoes);
+    const html = STATE.grupos.map((grupo) =>
+      tabelaGrupoHTML(grupo, classificacoes[grupo.id], melhoresTerceiros)
+    ).join("");
     document.getElementById("grupos-container").innerHTML =
       html || '<p class="vazio">Nenhum grupo cadastrado ainda.</p>';
   }

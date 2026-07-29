@@ -69,7 +69,8 @@ imagens/logo, `comVersao()`). **⚠️ REGRA IMPORTANTE:** sempre que qualquer
 CSS ou JS mudar, incremente **TODOS** os `?v=` do `index.html` (dados.js,
 db.js, app.js, estilo.css) e o `CACHE_VER` do app.js, para o mesmo número
 novo. Já tivemos um bug real de produção por esquecer disso (cache
-misturando JS antigo com HTML novo). Valor atual: **v=25**.
+misturando JS antigo com HTML novo). Valor em produção: **v=25**. A branch
+`feat/ajustes-visuais` está em **v=27** enquanto aguarda validação/deploy.
 
 ## 3. Como o deploy funciona (IMPORTANTE)
 
@@ -158,9 +159,9 @@ logo do rodapé, arquivos de preview soltos na raiz).
   identificado numa auditoria de segurança; **o dono do projeto avaliou o
   risco e decidiu manter assim de propósito** (projeto local, fechado,
   baixo risco real). Não "corrija" isso sem o cliente pedir de novo.
-- **Favicon:** ainda não existe (por isso aparece 404 de `favicon.ico` nos
-  logs — é cosmético/inofensivo, ignorado nas auditorias). Um dos 3
-  ajustes pendentes agora é justamente criar um favicon (ver §7).
+- **Favicon:** implementado localmente na branch `feat/ajustes-visuais`
+  usando `assets/img/campeonato.webp?v=27`; ainda não está em produção
+  (ver §7).
 - **Word "Codex"/hand-off:** o dono as vezes trabalha com Claude e às
   vezes com o Codex (outra IA) nas mesmas branches. Sempre commitar com
   mensagens claras e por etapa — é assim que o próximo agente entende o
@@ -172,30 +173,31 @@ Branch já criada: **`feat/ajustes-visuais`** (a partir de `main`, que já
 tem o Artilheiros publicado). Segue o mesmo processo do §4.
 
 Pedidos (nas palavras do cliente):
-1. **"Colocar alguma cor (a que combine mais) para terceiro lugar"** — o
-   cliente disse que vai explicar a regra exata numa próxima mensagem
-   (ainda **NÃO explicada** na hora em que este arquivo foi escrito).
-   ⚠️ Contexto importante: o ranking de Artilheiros **já tem** cores de
-   medalha para 1º/2º/3º lugar (`.art-pos--m1/m2/m3`, ouro/prata/bronze,
-   ver §5). Pode ser que o cliente esteja se referindo a ESSE elemento (e
-   talvez ache que falta cor, ou queira mudar o tom), ou pode ser outro
-   "terceiro lugar" em outro contexto (ex.: classificação dos grupos,
-   pódio de algum outro ranking). **Não assuma — espere a explicação da
-   regra antes de implementar.**
+1. **"Colocar alguma cor (a que combine mais) para terceiro lugar"** —
+   **IMPLEMENTADO E TESTADO LOCALMENTE, ainda NÃO publicado.** A regra
+   explicada pelo cliente é: passam os dois melhores terceiros colocados
+   entre os grupos, comparando primeiro pontos e depois saldo de gols. A
+   seleção é recalculada a cada atualização dos jogos. Os dois primeiros de
+   cada grupo continuam verdes; os dois melhores terceiros recebem faixa
+   azul (`.zona-melhor-terceiro`). A pedido do cliente, não há legenda
+   visual explicando as cores.
+   Em empate absoluto de pontos e saldo na vaga de corte, a ordenação fica
+   estável pela ordem dos grupos (A, B, C); confirmar com o cliente se existe
+   um terceiro critério oficial antes do deploy.
 2. **"Criar um gerador de banner"** — ainda sem detalhes do que deve gerar
    exatamente (banner de quê? resultado de jogo pra compartilhar? divulgação
    da rodada? formato de imagem pra baixar/compartilhar no WhatsApp?).
    **Aguardando esclarecimento do cliente.**
-3. **"Colocar logo no ícone da aba do navegador"** (favicon) — este é
-   direto: adicionar `<link rel="icon" ...>` no `<head>` do `index.html`
-   apontando pra uma versão da logo do campeonato
-   (`assets/img/campeonato.webp`, já existe) em tamanho adequado
-   (idealmente gerar um `.png`/`.ico` 32x32 e 180x180 pro apple-touch-icon).
-   Pode ser feito assim que tiver a imagem certa — não depende de mais
-   explicação, mas ainda não foi feito.
+3. **"Colocar logo no ícone da aba do navegador"** (favicon) —
+   **IMPLEMENTADO E TESTADO LOCALMENTE, ainda NÃO publicado.** O `<head>` do
+   `index.html` referencia diretamente `assets/img/campeonato.webp?v=27`,
+   a mesma logo oficial e otimizada usada no cabeçalho.
 
-### Status: nada implementado ainda nesta branch. Aguardando o cliente
-detalhar a regra do item 1 e os detalhes do item 2 antes de codar.
+### Status: itens 1 e 3 implementados na branch. O item 1 foi validado em
+320/360/768/1280 px, incluindo troca dos grupos classificados após uma nova
+rodada, desempate por saldo, sintaxe e ausência de acesso ao Firebase real.
+O favicon do item 3 foi validado no Chrome local. O item 2 ainda não foi
+implementado. Nada desta branch foi publicado.
 
 ## 8. Como testar (lembrete rápido)
 
