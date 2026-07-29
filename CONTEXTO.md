@@ -69,8 +69,7 @@ imagens/logo, `comVersao()`). **⚠️ REGRA IMPORTANTE:** sempre que qualquer
 CSS ou JS mudar, incremente **TODOS** os `?v=` do `index.html` (dados.js,
 db.js, app.js, estilo.css) e o `CACHE_VER` do app.js, para o mesmo número
 novo. Já tivemos um bug real de produção por esquecer disso (cache
-misturando JS antigo com HTML novo). Valor em produção: **v=25**. A branch
-`feat/ajustes-visuais` está em **v=27** enquanto aguarda validação/deploy.
+misturando JS antigo com HTML novo). Valor atual em produção: **v=27**.
 
 ## 3. Como o deploy funciona (IMPORTANTE)
 
@@ -117,7 +116,23 @@ necessidade estrita.
 6. Verificar produção no ar de verdade (não confiar só no "deploy disse
    sucesso" — checar HTTP, abrir com Puppeteer, comparar banco antes/depois).
 
-## 5. Estado atual (última entrega concluída e publicada)
+## 5. Estado atual (últimas entregas concluídas e publicadas)
+
+**Ajustes visuais (itens 1 e 3) — CONCLUÍDOS e EM PRODUÇÃO** (deploy em
+29/07/2026, v=27, verificado ponta a ponta):
+- **Melhores terceiros** (`calcularMelhoresTerceiros` em app.js): compara os
+  3ºs colocados de todos os grupos por pontos → saldo de gols; os 2 melhores
+  recebem faixa azul (`.zona-melhor-terceiro`, `--azul-classificacao: #4aa3ff`
+  — mesmo tom do badge do Grupo A). Recalculado a cada atualização de dados.
+  Inclui texto acessível (`.sr-only`) para leitores de tela. A legenda de
+  zona ("Zona de classificação") foi REMOVIDA a pedido do cliente.
+- **Favicon**: `<link rel="icon">` no `<head>` apontando para
+  `assets/img/campeonato.webp?v=27` (a logo oficial já otimizada).
+- Validado antes do deploy: 6 casos de borda da lógica (grupo com <3 times,
+  banco vazio, empate absoluto triplo, desempate por saldo), dados REAIS de
+  produção, visual em 320/360/768/1120px, regressão zero nas abas
+  Jogos/Artilheiros/Times, zero erros de JS. Confirmado em produção depois
+  do deploy: Nova Era e Vila do Jacu em azul, EF Gama fora (saldo -7).
 
 **Feature "Artilheiros" — CONCLUÍDA e EM PRODUÇÃO** (deploy feito com
 sucesso, verificado ponta a ponta):
@@ -159,9 +174,16 @@ logo do rodapé, arquivos de preview soltos na raiz).
   identificado numa auditoria de segurança; **o dono do projeto avaliou o
   risco e decidiu manter assim de propósito** (projeto local, fechado,
   baixo risco real). Não "corrija" isso sem o cliente pedir de novo.
-- **Favicon:** implementado localmente na branch `feat/ajustes-visuais`
-  usando `assets/img/campeonato.webp?v=27`; ainda não está em produção
-  (ver §7).
+- **Favicon:** JÁ EM PRODUÇÃO, usando `assets/img/campeonato.webp?v=27`.
+  Deu certo porque o `.assetsignore` bloqueia `.png/.jpg/.jpeg` mas NÃO
+  bloqueia `.webp` — se um dia trocar o favicon por PNG, precisa de
+  allow-list explícito (mesmo caso da logo do rodapé).
+- **Deploy pode falhar de forma transiente:** no deploy de 29/07 o wrangler
+  quebrou com exit code -1073740791 (crash do processo no Windows,
+  STATUS_STACK_BUFFER_OVERRUN) na primeira tentativa, e funcionou na
+  segunda, sem nenhuma mudança. Se acontecer: **produção não é afetada**
+  (o upload nem chega a trocar a versão), é só tentar de novo. Verificar
+  antes se produção continua no ar (curl na home) para ter certeza.
 - **Word "Codex"/hand-off:** o dono as vezes trabalha com Claude e às
   vezes com o Codex (outra IA) nas mesmas branches. Sempre commitar com
   mensagens claras e por etapa — é assim que o próximo agente entende o
@@ -173,31 +195,30 @@ Branch já criada: **`feat/ajustes-visuais`** (a partir de `main`, que já
 tem o Artilheiros publicado). Segue o mesmo processo do §4.
 
 Pedidos (nas palavras do cliente):
-1. **"Colocar alguma cor (a que combine mais) para terceiro lugar"** —
-   **IMPLEMENTADO E TESTADO LOCALMENTE, ainda NÃO publicado.** A regra
-   explicada pelo cliente é: passam os dois melhores terceiros colocados
-   entre os grupos, comparando primeiro pontos e depois saldo de gols. A
-   seleção é recalculada a cada atualização dos jogos. Os dois primeiros de
-   cada grupo continuam verdes; os dois melhores terceiros recebem faixa
-   azul (`.zona-melhor-terceiro`). A pedido do cliente, não há legenda
-   visual explicando as cores.
-   Em empate absoluto de pontos e saldo na vaga de corte, a ordenação fica
-   estável pela ordem dos grupos (A, B, C); confirmar com o cliente se existe
-   um terceiro critério oficial antes do deploy.
-2. **"Criar um gerador de banner"** — ainda sem detalhes do que deve gerar
-   exatamente (banner de quê? resultado de jogo pra compartilhar? divulgação
-   da rodada? formato de imagem pra baixar/compartilhar no WhatsApp?).
-   **Aguardando esclarecimento do cliente.**
-3. **"Colocar logo no ícone da aba do navegador"** (favicon) —
-   **IMPLEMENTADO E TESTADO LOCALMENTE, ainda NÃO publicado.** O `<head>` do
-   `index.html` referencia diretamente `assets/img/campeonato.webp?v=27`,
-   a mesma logo oficial e otimizada usada no cabeçalho.
 
-### Status: itens 1 e 3 implementados na branch. O item 1 foi validado em
-320/360/768/1280 px, incluindo troca dos grupos classificados após uma nova
-rodada, desempate por saldo, sintaxe e ausência de acesso ao Firebase real.
-O favicon do item 3 foi validado no Chrome local. O item 2 ainda não foi
-implementado. Nada desta branch foi publicado.
+1. ✅ **"Colocar alguma cor para terceiro lugar"** — **CONCLUÍDO E EM
+   PRODUÇÃO** (detalhes no §5). Regra do cliente: passam os dois melhores
+   terceiros colocados entre os grupos, comparando pontos e depois saldo.
+   ⚠️ Ponto em aberto (baixa prioridade): em empate ABSOLUTO de pontos E
+   saldo na vaga de corte, o desempate hoje é a ordem dos grupos (A, B, C).
+   Vale confirmar com o cliente se o regulamento tem um terceiro critério
+   oficial (ex.: gols pró, confronto direto). Não bloqueia nada hoje.
+2. ⏳ **"Criar um gerador de banner"** — **PENDENTE, é a próxima tarefa.**
+   O cliente disse que ia pedir ao Codex para implementar. Ainda sem
+   detalhes definidos (banner de quê? resultado de jogo pra compartilhar?
+   divulgação da rodada? formato de imagem pra baixar/mandar no WhatsApp?).
+   Se for implementar: provavelmente gerar a imagem no navegador via
+   `<canvas>` (o projeto já usa canvas em `processarImagemEscudo`) e
+   oferecer download/compartilhamento. **Confirmar o escopo com o cliente
+   antes de codar.**
+3. ✅ **"Colocar logo no ícone da aba do navegador"** (favicon) —
+   **CONCLUÍDO E EM PRODUÇÃO** (detalhes no §5).
+
+### Status: itens 1 e 3 auditados, mesclados na `main` e publicados em
+produção em 29/07/2026 (v=27), com backups do banco e do código em
+`backups/` e tag de rollback `pre-ajustes-visuais-20260729-144645`.
+Banco verificado intacto depois do deploy (17 jogos, 13 times, 16 gols).
+Falta apenas o item 2 (gerador de banner).
 
 ## 8. Como testar (lembrete rápido)
 
