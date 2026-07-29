@@ -15,6 +15,7 @@
   --dourado: #f4b41a;
   --dourado-claro: #f7ca4d;
   --dourado-escuro: #c98a06;
+  --azul-classificacao: #4aa3ff;
   --creme: #f4f1e6;
   --texto: #e9f2ec;
   --texto-suave: #a9c3b5;
@@ -136,6 +137,7 @@ img { max-width: 100%; display: block; }
 }
 .aba-btn {
   flex: 1;
+  min-width: 0;
   cursor: pointer;
   border: 1px solid transparent;
   background: transparent;
@@ -180,10 +182,6 @@ img { max-width: 100%; display: block; }
   background: linear-gradient(90deg, var(--dourado), transparent);
   border-radius: 3px;
 }
-.legenda-zona { font-size: .84rem; color: var(--texto-suave); display: inline-flex; align-items: center; gap: 6px; }
-.ponto { width: 11px; height: 11px; border-radius: 3px; display: inline-block; }
-.ponto.verde { background: var(--verde-brilho); box-shadow: 0 0 0 3px rgba(47,191,113,.18); }
-
 /* =========================================================================
    CLASSIFICAÇÃO — CARDS DE GRUPO
    ========================================================================= */
@@ -256,6 +254,9 @@ img { max-width: 100%; display: block; }
 .zona-classificacao td { background: rgba(47,191,113,.07); }
 .zona-classificacao { box-shadow: inset 3px 0 0 var(--verde-brilho); }
 .zona-classificacao .pos { background: var(--verde-brilho); color: var(--verde-950); }
+.zona-melhor-terceiro td { background: rgba(74,163,255,.07); }
+.zona-melhor-terceiro { box-shadow: inset 3px 0 0 var(--azul-classificacao); }
+.zona-melhor-terceiro .pos { background: var(--azul-classificacao); color: #04121f; }
 
 .time-cell { display: flex; align-items: center; gap: 8px; }
 .time-nome {
@@ -274,6 +275,14 @@ img { max-width: 100%; display: block; }
   font-size: .78rem; color: var(--texto-fraco);
 }
 .legenda-siglas b { color: var(--texto-suave); }
+
+.sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0, 0, 0, 0);
+  white-space: nowrap; border: 0;
+}
 
 /* =========================================================================
    ESCUDOS
