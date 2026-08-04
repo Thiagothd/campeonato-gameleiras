@@ -10,7 +10,17 @@ $ErrorActionPreference = "Stop"
 function Get-RequiredEnv {
   param([string]$Name)
 
+  # Procura a credencial em 3 lugares, nesta ordem: no processo atual, e depois
+  # nas variaveis persistentes do usuario e da maquina. As persistentes so
+  # aparecem no processo quando ele e criado DEPOIS de terem sido salvas, por
+  # isso a busca explicita — assim o deploy funciona em qualquer terminal.
   $value = [Environment]::GetEnvironmentVariable($Name)
+  if ([string]::IsNullOrWhiteSpace($value)) {
+    $value = [Environment]::GetEnvironmentVariable($Name, "User")
+  }
+  if ([string]::IsNullOrWhiteSpace($value)) {
+    $value = [Environment]::GetEnvironmentVariable($Name, "Machine")
+  }
   if ([string]::IsNullOrWhiteSpace($value)) {
     throw "Missing required environment variable: $Name"
   }

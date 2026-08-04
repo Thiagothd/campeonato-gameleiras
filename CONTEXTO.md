@@ -97,18 +97,26 @@ Produção **NÃO** tem deploy automático via GitHub. Publicar exige rodar
 manualmente (PowerShell, na raiz do projeto):
 
 ```powershell
-$env:CLOUDFLARE_API_TOKEN = "..."     # token de API escopo limitado (Pages:Edit + DNS:Edit da zona)
-$env:CLOUDFLARE_ACCOUNT_ID = "..."    # Account ID da Cloudflare
 .\deploy-cloudflare-pages.ps1
 ```
 
+**As credenciais já estão salvas** (desde 04/08/2026, a pedido do dono) como
+variáveis de ambiente **do usuário do Windows** — `CLOUDFLARE_API_TOKEN` e
+`CLOUDFLARE_ACCOUNT_ID`. Não é mais preciso pedir o token a cada deploy.
+Elas ficam **fora do repositório** (que é público) — nunca as escreva em
+nenhum arquivo do projeto. Para conferir/trocar:
+`[Environment]::SetEnvironmentVariable("CLOUDFLARE_API_TOKEN", "...", "User")`.
+O `Get-RequiredEnv` do script procura no processo e depois nos escopos
+User/Machine, então funciona em qualquer terminal.
+
+Se algum dia precisar gerar um token novo: dash.cloudflare.com → My Profile
+→ API Tokens → Create Custom Token, com permissões
+`Account > Cloudflare Pages > Edit` + `Zone > DNS > Edit`
+(escopo: zona `speedlinemg.com.br`).
+
 O script: cria/atualiza o projeto Cloudflare Pages, roda
 `wrangler pages deploy .`, garante o domínio customizado e o registro DNS
-CNAME. **O usuário precisa gerar o token toda vez** (não fica salvo em
-lugar nenhum, nem deve ficar) — oriente-o a criar em
-dash.cloudflare.com → My Profile → API Tokens → Create Custom Token, com
-permissões `Account > Cloudflare Pages > Edit` + `Zone > DNS > Edit`
-(escopo: zona `speedlinemg.com.br`).
+CNAME.
 
 **O deploy é só de arquivos estáticos — nunca toca no banco (Firestore).**
 Então "backup do banco" antes de um deploy de código é precaução, não
@@ -137,6 +145,25 @@ necessidade estrita.
    sucesso" — checar HTTP, abrir com Puppeteer, comparar banco antes/depois).
 
 ## 5. Estado atual (últimas entregas concluídas e publicadas)
+
+**Gerador de banners — CONCLUÍDO e EM PRODUÇÃO** (deploy em 04/08/2026,
+v=39, verificado ponta a ponta):
+- Aba "Gerar Banner" no Gerenciador: monta artes 1080×1920 (Story) ou
+  1080×1080 (Feed) a partir dos jogos, com filtro por grupo/time, seleção
+  de jogos, título customizável e download em PNG.
+- `html2canvas@1.4.1` via CDN jsDelivr (com `defer`), template visual em
+  `assets/css/banner-modelo.css`, artes em `assets/img/banners/`.
+  Nada do editor entra no `STATE` nem no Firebase.
+- Auditoria antes do deploy: diff **puramente aditivo** (app.js 791+/1−,
+  sendo a única remoção o `CACHE_VER`; estilo.css 686+/0−) → nenhuma função
+  existente alterada. Regressão zero nas 4 abas públicas. Imagens novas
+  confirmadas publicáveis. Com o CDN bloqueado, o site público segue 100%
+  funcional (só o export do banner degrada, com guarda no código).
+- ⚠️ **Pendência conhecida (não bloqueia):** todo visitante baixa ~435 KB
+  extras por visita (194 KB do html2canvas + 241 KB da imagem de fundo),
+  mesmo sem abrir o Gerenciador. Medido com Puppeteer. A otimização
+  (carregar os dois sob demanda, só ao abrir a aba de banner) ficou como
+  próxima tarefa, para não misturar mudanças num deploy já validado.
 
 **Ajustes visuais (itens 1 e 3) — CONCLUÍDOS e EM PRODUÇÃO** (deploy em
 29/07/2026, v=27, verificado ponta a ponta):
@@ -224,9 +251,9 @@ Pedidos (nas palavras do cliente):
    saldo na vaga de corte, o desempate hoje é a ordem dos grupos (A, B, C).
    Vale confirmar com o cliente se o regulamento tem um terceiro critério
    oficial (ex.: gols pró, confronto direto). Não bloqueia nada hoje.
-2. 🧪 **"Criar um gerador de banner"** — **IMPLEMENTADO E TESTADO
-   LOCALMENTE, ainda NÃO publicado.** Nova sub-aba `Gerar Banner` no
-   Gerenciador com:
+2. ✅ **"Criar um gerador de banner"** — **CONCLUÍDO E EM PRODUÇÃO**
+   (deploy em 04/08/2026, v=39 — detalhes e pendência de peso no §5).
+   Nova sub-aba `Gerar Banner` no Gerenciador com:
    - Próximos jogos ou resultados; Story 9:16 ou Feed 1:1.
    - Filtros combinados por grupo/rodada e time, com seleção múltipla de jogos.
    - Título/subtítulo editáveis, três fundos da identidade e upload local.
@@ -243,16 +270,19 @@ Pedidos (nas palavras do cliente):
 3. ✅ **"Colocar logo no ícone da aba do navegador"** (favicon) —
    **CONCLUÍDO E EM PRODUÇÃO** (detalhes no §5).
 
-### Status: itens 1 e 3 auditados, mesclados na `main` e publicados em
-produção em 29/07/2026 (v=27), com backups do banco e do código em
-`backups/` e tag de rollback `pre-ajustes-visuais-20260729-144645`.
-O item 2 está em `v=39` e passou localmente por Chrome headless em
-320/768/1280 px, sem
-overflow ou erros JS, sem acesso ao Firebase, com imagens válidas e dois
-PNGs reais: Story 1080×1920 (~2,2 MB) e Feed 1080×1080 (~1,1 MB). Upload
-personalizado e compartilhamento de arquivo também foram validados. Falta a
-aprovação visual do cliente; nada da branch `feat/gerador-banners` foi
-publicado.
+### Status: OS 3 ITENS ESTÃO CONCLUÍDOS E EM PRODUÇÃO.
+Itens 1 e 3 publicados em 29/07/2026 (v=27, tag
+`pre-ajustes-visuais-20260729-144645`). Item 2 publicado em 04/08/2026
+(v=39, tag `pre-banners-20260804-114809`), com backup do banco (20 jogos,
+54 gols, 1 elenco) e do código v=27 em `backups/`. Banco verificado
+intacto depois do deploy.
+
+**Próxima tarefa sugerida (não pedida ainda pelo cliente):** otimizar o
+carregamento do gerador de banners — hoje o `html2canvas` (194 KB) e o
+fundo Story (241 KB) são baixados por TODO visitante, mesmo quem só quer
+ver a tabela. Carregar os dois sob demanda (só ao abrir a aba "Gerar
+Banner") economizaria ~435 KB por visita, o que importa num site usado
+majoritariamente em dados móveis.
 
 ## 8. Como testar (lembrete rápido)
 
