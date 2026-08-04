@@ -1406,6 +1406,16 @@ img { max-width: 100%; display: block; }
 }
 .elenco-chip button:hover { background: rgba(229,72,77,.3); color: #fff; }
 .elenco-vazio { font-size: .82rem; color: var(--texto-fraco); font-style: italic; }
+/* selo com o total de gols do jogador na súmula */
+.elenco-gols {
+  display: inline-grid; place-items: center; font-style: normal;
+  min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px;
+  background: var(--dourado); color: var(--verde-950);
+  font-family: var(--fonte-cond); font-size: .7rem; font-weight: 700;
+}
+/* quem tem gol registrado não pode ser removido direto do elenco */
+.elenco-chip button.elenco-travado { background: rgba(255,255,255,.06); cursor: not-allowed; }
+.elenco-chip button.elenco-travado:hover { background: rgba(255,255,255,.14); color: var(--texto-suave); }
 
 /* Gols marcados na edição do jogo */
 .gols-lista { display: flex; flex-direction: column; gap: 8px; margin-bottom: 8px; }
