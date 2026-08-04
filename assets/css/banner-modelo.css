@@ -1,0 +1,1214 @@
+/* =========================================================================
+   TEMPLATE OFICIAL DO GERADOR DE BANNERS
+   A arte usa dimensoes nativas; somente a previa externa recebe transform.
+   ========================================================================= */
+
+.banner-arte {
+  --banner-lima: #a2ee00;
+  --banner-lima-vivo: #00ff55;
+  --banner-preto: #061008;
+  --banner-card: rgba(5, 17, 9, .94);
+  --banner-borda: rgba(162, 238, 0, .7);
+  --banner-fundo-imagem: url("../img/banners/fundo-gameleiras-story.webp");
+  --banner-escudo: 228px;
+  isolation: auto;
+  border: 0;
+  background-color: #020805;
+  background-image: var(--banner-fundo-imagem);
+  background-position: center;
+  background-size: cover;
+  box-shadow: none;
+  color: #fff;
+}
+
+.banner-arte--feed {
+  --banner-fundo-imagem: url("../img/banners/fundo-gameleiras-feed.webp");
+}
+
+.banner-arte.banner-tema--noturno {
+  background-image:
+    linear-gradient(rgba(0, 12, 9, .45), rgba(0, 6, 5, .68)),
+    var(--banner-fundo-imagem);
+}
+
+.banner-arte.banner-tema--dourado {
+  background-image:
+    linear-gradient(145deg, rgba(89, 64, 0, .2), rgba(0, 16, 7, .54)),
+    var(--banner-fundo-imagem);
+}
+
+.banner-arte.banner-tema--personalizado {
+  background-position: center;
+  background-size: cover;
+}
+
+.banner-arte::before,
+.banner-arte::after {
+  display: none;
+}
+
+/* Cabecalho: logo, titulo em duas linhas e data lateral. */
+.banner-arte-cabecalho {
+  position: relative;
+  height: 780px;
+  min-height: 0;
+  display: flex;
+  flex: 0 0 780px;
+  align-items: center;
+  flex-direction: column;
+  justify-content: flex-start;
+  gap: 24px;
+  padding: 15px 51px 12px;
+  border: 0;
+  background: none;
+}
+
+.banner-logo-campeonato {
+  width: 429px;
+  height: 411px;
+  padding: 0;
+  overflow: visible;
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  filter: none;
+}
+
+.banner-logo-campeonato img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.banner-chamada {
+  width: 100%;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 234px;
+  gap: 30px;
+  align-items: center;
+  margin-top: 0;
+}
+
+.banner-titulos {
+  position: relative;
+  top: -30px;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  justify-content: center;
+  font-family: var(--fonte-titulo);
+  font-style: italic;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.banner-titulo-superior,
+.banner-titulo-destaque {
+  max-width: 100%;
+  display: block;
+  overflow-wrap: anywhere;
+  letter-spacing: 0;
+}
+
+.banner-titulo-superior {
+  color: #f4f5f2;
+  font-size: 105px;
+  line-height: .88;
+  text-shadow: 6px 6px 0 #172119;
+}
+
+.banner-titulo-destaque {
+  position: relative;
+  color: var(--banner-lima);
+  font-size: 129px;
+  line-height: .92;
+  text-shadow: 6px 6px 0 #17320e;
+}
+
+.banner-titulo-destaque::before,
+.banner-titulo-destaque::after {
+  content: "";
+  position: absolute;
+  top: 52%;
+  width: 72px;
+  height: 24px;
+  transform: translateY(-50%);
+  background:
+    linear-gradient(var(--banner-lima), var(--banner-lima)) 0 0 / 100% 3px no-repeat,
+    linear-gradient(var(--banner-lima), var(--banner-lima)) 0 50% / 78% 3px no-repeat,
+    linear-gradient(var(--banner-lima), var(--banner-lima)) 0 100% / 54% 3px no-repeat;
+}
+
+.banner-titulo-destaque::before {
+  right: calc(100% + 21px);
+}
+
+.banner-titulo-destaque::after {
+  left: calc(100% + 21px);
+  transform: translateY(-50%) scaleX(-1);
+}
+
+.banner-titulo--longo .banner-titulo-superior {
+  font-size: 87px;
+}
+
+.banner-titulo--longo .banner-titulo-destaque {
+  font-size: 108px;
+}
+
+.banner-titulo--muito-longo .banner-titulo-superior {
+  font-size: 72px;
+}
+
+.banner-titulo--muito-longo .banner-titulo-destaque {
+  font-size: 90px;
+}
+
+.banner-data-destaque {
+  width: 234px;
+  min-height: 288px;
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  justify-content: center;
+  padding: 15px 12px 12px;
+  overflow: hidden;
+  border: 3px solid var(--banner-lima);
+  border-radius: 21px;
+  background: rgba(4, 14, 8, .9);
+  color: #fff;
+  font-family: var(--fonte-cond);
+  font-weight: 700;
+  line-height: .8;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.banner-data-conteudo {
+  position: relative;
+  top: -24px;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.banner-data-destaque strong {
+  display: block;
+  font-family: var(--fonte-titulo);
+  font-size: 150px;
+  font-weight: 400;
+  line-height: 1;
+  margin-bottom: 21px;
+}
+
+.banner-data-destaque span {
+  max-width: 100%;
+  display: block;
+  margin-top: 0;
+  overflow-wrap: anywhere;
+  color: var(--banner-lima);
+  font-size: 45px;
+  line-height: .85;
+}
+
+.banner-data-destaque small {
+  display: block;
+  margin-top: 21px;
+  color: var(--banner-lima);
+  font-size: 21px;
+  line-height: 1;
+}
+
+/* Corpo: uma moldura escura completa para cada confronto. */
+.banner-arte-corpo {
+  height: 813px;
+  min-height: 0;
+  flex: 0 0 813px;
+  display: flex;
+  padding: 3px 42px 12px;
+}
+
+.banner-arte-jogos {
+  width: 100%;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: repeat(var(--qtd-jogos), minmax(0, 1fr));
+  gap: 21px;
+  align-content: center;
+}
+
+.banner-arte:not(.banner-arte--feed)[data-jogos="1"] {
+  --banner-escudo: 318px;
+}
+
+.banner-arte:not(.banner-arte--feed)[data-jogos="1"] .banner-arte-jogos {
+  grid-template-rows: 570px;
+}
+
+.banner-arte:not(.banner-arte--feed)[data-jogos="2"] {
+  --banner-escudo: 228px;
+}
+
+.banner-arte:not(.banner-arte--feed)[data-jogos="2"] .banner-arte-jogos {
+  grid-template-rows: repeat(2, 387px);
+}
+
+.banner-arte:not(.banner-arte--feed)[data-jogos="3"] {
+  --banner-escudo: 171px;
+}
+
+.banner-arte:not(.banner-arte--feed)[data-jogos="3"] .banner-arte-jogos {
+  grid-template-rows: repeat(3, 252px);
+}
+
+.banner-arte:not(.banner-arte--feed)[data-jogos="1"] .banner-card-jogo--com-goleadores .banner-escudo {
+  width: 246px;
+  height: 246px;
+}
+
+.banner-arte:not(.banner-arte--feed)[data-jogos="3"] .banner-equipe {
+  gap: 6px;
+}
+
+.banner-arte:not(.banner-arte--feed)[data-jogos="3"] .banner-time-nome {
+  min-height: 42px;
+  font-size: 27px;
+}
+
+.banner-arte:not(.banner-arte--feed)[data-jogos="3"] .banner-goleadores {
+  min-height: 18px;
+  max-height: 21px;
+  overflow: hidden;
+  padding: 0 0 3px;
+  font-size: 15px;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.banner-arte:not(.banner-arte--feed)[data-jogos="3"] .banner-card-jogo--com-goleadores .banner-escudo {
+  width: 126px;
+  height: 126px;
+}
+
+.banner-card-jogo {
+  min-height: 0;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 372px minmax(0, 1fr);
+  gap: 15px;
+  align-items: center;
+  padding: 18px 21px 15px;
+  border: 3px solid var(--banner-borda);
+  border-left: 3px solid var(--banner-borda);
+  border-radius: 21px;
+  background: var(--banner-card);
+  box-shadow: none;
+}
+
+.banner-equipe {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  justify-content: center;
+  gap: 9px;
+  text-align: center;
+}
+
+.banner-equipe--visitante {
+  flex-direction: column;
+}
+
+.banner-escudo {
+  position: relative;
+  width: var(--banner-escudo);
+  height: var(--banner-escudo);
+  overflow: visible;
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  filter: none;
+  color: #0a351c;
+  font-size: 36px;
+}
+
+.banner-escudo > span {
+  width: 86%;
+  height: 86%;
+  display: grid;
+  place-items: center;
+  border: 3px solid var(--banner-lima);
+  border-radius: 50%;
+  background: #f7f7f2;
+}
+
+.banner-escudo img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.banner-time-nome {
+  width: 100%;
+  min-height: 66px;
+  display: grid;
+  place-items: center;
+  padding: 3px 6px;
+  overflow-wrap: anywhere;
+  border-radius: 0;
+  background: none;
+  color: #f8faf7;
+  box-shadow: none;
+  font-size: 39px;
+  line-height: .9;
+}
+
+.banner-time-nome--longo {
+  font-size: 30px;
+}
+
+.banner-goleadores {
+  width: 100%;
+  min-height: 36px;
+  overflow: visible;
+  display: grid;
+  place-items: center;
+  padding: 3px 0 6px;
+  color: var(--banner-lima);
+  font-family: var(--fonte-cond);
+  font-size: 21px;
+  font-weight: 600;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.banner-goleadores--longo {
+  font-size: 18px;
+}
+
+.banner-card-jogo--com-goleadores .banner-escudo {
+  width: 186px;
+  height: 186px;
+}
+
+.banner-confronto {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  justify-content: center;
+  gap: 24px;
+}
+
+.banner-versus,
+.banner-placar {
+  color: #e9ece7;
+  font-family: var(--fonte-titulo);
+  font-style: italic;
+  line-height: .82;
+  text-shadow:
+    6px 6px 0 #5d675e,
+    -3px -3px 0 #fff;
+}
+
+.banner-versus {
+  position: relative;
+  top: -42px;
+  left: -24px;
+  width: 100%;
+  height: 150px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  margin: 0;
+  font-size: 156px;
+  line-height: 1;
+}
+
+.banner-placar {
+  position: relative;
+  top: -30px;
+  width: 100%;
+  height: 129px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  justify-items: center;
+  gap: 12px;
+  margin: 0;
+  font-size: 111px;
+  line-height: 1;
+}
+
+.banner-placar b {
+  width: 100%;
+  min-width: 96px;
+  height: 129px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border-radius: 0;
+  background: none;
+  color: inherit;
+  box-shadow: none;
+  font-size: inherit;
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  text-align: center;
+}
+
+.banner-placar span {
+  color: var(--banner-lima);
+  font-size: 54px;
+  text-shadow: none;
+}
+
+.banner-card-tags {
+  position: relative;
+  z-index: 1;
+  width: 372px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 0;
+}
+
+.banner-card-tags span {
+  min-width: 0;
+  height: 90px;
+  min-height: 90px;
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 15px 12px;
+  overflow: visible;
+  border: 3px solid var(--banner-lima);
+  border-radius: 12px;
+  background: #101912;
+  color: #fff;
+  font-family: var(--fonte-cond);
+  font-size: 42px;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.banner-tag--data { width: 174px; }
+.banner-tag--hora { width: 186px; }
+
+.banner-card-tags b {
+  position: relative;
+  top: -20px;
+  left: 0;
+  min-width: 0;
+  height: 54px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  overflow: visible;
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  text-overflow: clip;
+  white-space: nowrap;
+}
+
+.banner-card-tags i {
+  position: relative;
+  top: -20px;
+  left: 0;
+  width: 39px;
+  height: 39px;
+  color: var(--banner-lima);
+  display: inline-flex;
+  flex: 0 0 39px;
+  align-items: center;
+  justify-content: center;
+  font-family: Arial, sans-serif;
+  font-size: 39px;
+  font-style: normal;
+  line-height: 1;
+}
+
+.banner-tag--data > b,
+.banner-tag--data > i {
+  left: -2px;
+}
+
+.banner-arte-vazio {
+  border-color: var(--banner-borda);
+  background: var(--banner-card);
+  color: #f0f6ec;
+}
+
+/* Rodape: frase com bolas e faixa branca com marcas oficiais. */
+.banner-arte-rodape {
+  height: 327px;
+  min-height: 0;
+  display: flex;
+  flex: 0 0 327px;
+  align-items: stretch;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 15px;
+  padding: 6px 45px 27px;
+  border: 0;
+  background: none;
+}
+
+.banner-frase {
+  min-height: 117px;
+  display: grid;
+  grid-template-columns: 117px minmax(0, 1fr) 117px;
+  gap: 15px;
+  align-items: center;
+  text-align: center;
+}
+
+.banner-frase > img {
+  width: 117px;
+  height: 117px;
+  object-fit: contain;
+}
+
+.banner-frase > div {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+}
+
+.banner-frase strong {
+  display: block;
+  color: #f8faf7;
+  font-family: var(--fonte-cond);
+  font-size: 51px;
+  font-style: italic;
+  font-weight: 700;
+  line-height: .95;
+  text-transform: uppercase;
+}
+
+.banner-frase strong em {
+  color: var(--banner-lima);
+  font-style: inherit;
+}
+
+.banner-frase span {
+  display: block;
+  margin-top: 6px;
+  color: #f3f6f1;
+  font-family: var(--fonte-corpo);
+  font-size: 21px;
+  font-style: italic;
+  line-height: 1;
+}
+
+.banner-frase span b {
+  color: var(--banner-lima);
+}
+
+.banner-patrocinadores {
+  width: 100%;
+  min-height: 168px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 15px 27px;
+  overflow: hidden;
+  border-radius: 21px;
+  background: #fff;
+  color: #082919;
+}
+
+.banner-logos-institucionais {
+  width: 100%;
+  height: 132px;
+  object-fit: contain;
+}
+
+/* Três jogos precisam de um miolo compacto para preservar os escudos. */
+.banner-arte:not(.banner-arte--feed)[data-jogos="3"] .banner-confronto {
+  gap: 12px;
+}
+
+.banner-arte:not(.banner-arte--feed)[data-jogos="3"] .banner-versus {
+  top: -18px;
+  left: -16px;
+  height: 96px;
+  font-size: 105px;
+}
+
+.banner-arte:not(.banner-arte--feed)[data-jogos="3"] .banner-placar {
+  top: -15px;
+  height: 90px;
+  font-size: 81px;
+}
+
+.banner-arte:not(.banner-arte--feed)[data-jogos="3"] .banner-placar b {
+  height: 90px;
+}
+
+.banner-arte:not(.banner-arte--feed)[data-jogos="3"] .banner-card-tags {
+  width: 300px;
+  gap: 9px;
+}
+
+.banner-arte:not(.banner-arte--feed)[data-jogos="3"] .banner-card-tags span {
+  height: 54px;
+  min-height: 54px;
+  gap: 6px;
+  padding: 9px;
+  font-size: 24px;
+}
+
+.banner-arte:not(.banner-arte--feed)[data-jogos="3"] .banner-card-tags b {
+  top: -10px;
+  left: -3px;
+  height: 30px;
+}
+
+.banner-arte:not(.banner-arte--feed)[data-jogos="3"] .banner-tag--data { width: 144px; }
+.banner-arte:not(.banner-arte--feed)[data-jogos="3"] .banner-tag--hora { width: 147px; }
+
+.banner-arte:not(.banner-arte--feed)[data-jogos="3"] .banner-card-tags i {
+  top: -10px;
+  left: -3px;
+  width: 24px;
+  height: 24px;
+  flex-basis: 24px;
+  font-size: 24px;
+}
+
+/* Mais jogos: compactacao progressiva sem alterar o tamanho do canvas. */
+.banner-arte[data-denso="true"] {
+  --banner-escudo: 117px;
+}
+
+.banner-arte[data-denso="true"] .banner-card-jogo {
+  grid-template-columns: minmax(0, 1fr) 246px minmax(0, 1fr);
+  gap: 9px;
+  padding: 9px 15px;
+}
+
+.banner-arte[data-denso="true"] .banner-time-nome {
+  min-height: 42px;
+  font-size: 21px;
+}
+
+.banner-arte[data-denso="true"] .banner-time-nome--longo {
+  font-size: 18px;
+}
+
+.banner-arte[data-denso="true"] .banner-goleadores {
+  min-height: 18px;
+  max-height: 21px;
+  overflow: hidden;
+  padding: 0 0 3px;
+  font-size: 15px;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.banner-arte[data-denso="true"] .banner-card-jogo--com-goleadores .banner-escudo {
+  width: 93px;
+  height: 93px;
+}
+
+.banner-arte[data-denso="true"] .banner-confronto {
+  gap: 6px;
+}
+
+.banner-arte[data-denso="true"] .banner-versus,
+.banner-arte[data-denso="true"] .banner-placar {
+  top: -18px;
+}
+
+.banner-arte[data-denso="true"] .banner-versus {
+  left: -15px;
+}
+
+.banner-arte[data-denso="true"] .banner-versus {
+  height: 84px;
+  font-size: 93px;
+}
+
+.banner-arte[data-denso="true"] .banner-placar {
+  height: 81px;
+  font-size: 72px;
+}
+
+.banner-arte[data-denso="true"] .banner-placar b {
+  min-width: 66px;
+  height: 81px;
+}
+
+.banner-arte[data-denso="true"] .banner-card-tags {
+  width: 228px;
+  gap: 6px;
+  margin-top: 0;
+}
+
+.banner-arte[data-denso="true"] .banner-card-tags span {
+  height: 45px;
+  min-height: 45px;
+  padding: 6px 9px;
+  font-size: 18px;
+}
+
+.banner-arte[data-denso="true"] .banner-card-tags b {
+  top: -8px;
+  left: -3px;
+  height: 24px;
+}
+
+.banner-arte[data-denso="true"] .banner-tag--data,
+.banner-arte[data-denso="true"] .banner-tag--hora {
+  width: 111px;
+}
+
+.banner-arte[data-denso="true"] .banner-card-tags i {
+  display: none;
+}
+
+/* Feed 1:1: mesma hierarquia, condensada para 1080x1080. */
+.banner-arte--feed {
+  --banner-escudo: 132px;
+}
+
+.banner-arte--feed .banner-arte-cabecalho {
+  height: 477px;
+  min-height: 0;
+  display: flex;
+  flex: 0 0 477px;
+  grid-template-columns: none;
+  flex-direction: column;
+  gap: 24px;
+  padding: 6px 36px 9px;
+}
+
+.banner-arte--feed .banner-logo-campeonato {
+  width: 252px;
+  height: 216px;
+}
+
+.banner-arte--feed .banner-chamada {
+  grid-template-columns: minmax(0, 1fr) 180px;
+  gap: 18px;
+  margin-top: 0;
+}
+
+.banner-arte--feed .banner-titulos {
+  top: -18px;
+}
+
+.banner-arte--feed .banner-titulo-superior {
+  font-size: 66px;
+}
+
+.banner-arte--feed .banner-titulo-destaque {
+  font-size: 81px;
+}
+
+.banner-arte--feed.banner-titulo--longo .banner-titulo-superior {
+  font-size: 57px;
+}
+
+.banner-arte--feed.banner-titulo--longo .banner-titulo-destaque {
+  font-size: 69px;
+}
+
+.banner-arte--feed.banner-titulo--muito-longo .banner-titulo-superior {
+  font-size: 48px;
+}
+
+.banner-arte--feed.banner-titulo--muito-longo .banner-titulo-destaque {
+  font-size: 60px;
+}
+
+.banner-arte--feed .banner-titulo-destaque::before,
+.banner-arte--feed .banner-titulo-destaque::after {
+  width: 51px;
+  height: 18px;
+}
+
+.banner-arte--feed .banner-titulo-destaque::before {
+  right: calc(100% + 15px);
+}
+
+.banner-arte--feed .banner-titulo-destaque::after {
+  left: calc(100% + 15px);
+}
+
+.banner-arte--feed .banner-data-destaque {
+  width: 180px;
+  min-height: 189px;
+  padding: 9px;
+  border-radius: 15px;
+}
+
+.banner-arte--feed .banner-data-conteudo {
+  top: -14px;
+}
+
+.banner-arte--feed .banner-data-destaque strong {
+  margin-bottom: 6px;
+  font-size: 90px;
+  line-height: 1;
+}
+
+.banner-arte--feed .banner-data-destaque span {
+  margin-top: 6px;
+  font-size: 27px;
+}
+
+.banner-arte--feed .banner-data-destaque small {
+  margin-top: 9px;
+  font-size: 15px;
+}
+
+.banner-arte--feed .banner-arte-corpo {
+  height: 423px;
+  flex: 0 0 423px;
+  padding: 0 27px 6px;
+}
+
+.banner-arte--feed .banner-arte-jogos {
+  gap: 15px;
+}
+
+.banner-arte--feed[data-jogos="1"] {
+  --banner-escudo: 195px;
+}
+
+.banner-arte--feed[data-jogos="1"] .banner-arte-jogos {
+  grid-template-rows: 336px;
+}
+
+.banner-arte--feed[data-jogos="2"] {
+  --banner-escudo: 132px;
+}
+
+.banner-arte--feed[data-jogos="2"] .banner-arte-jogos {
+  grid-template-rows: repeat(2, 201px);
+}
+
+.banner-arte--feed[data-jogos="3"] {
+  --banner-escudo: 90px;
+}
+
+.banner-arte--feed[data-jogos="3"] .banner-arte-jogos {
+  grid-template-rows: repeat(3, 129px);
+}
+
+.banner-arte--feed[data-jogos="1"] .banner-card-jogo--com-goleadores .banner-escudo {
+  width: 150px;
+  height: 150px;
+}
+
+.banner-arte--feed[data-jogos="3"] .banner-time-nome {
+  min-height: 27px;
+  font-size: 18px;
+}
+
+.banner-arte--feed[data-jogos="3"] .banner-goleadores {
+  min-height: 15px;
+  max-height: 18px;
+  overflow: hidden;
+  padding: 0 0 3px;
+  font-size: 12px;
+  line-height: 1.2;
+}
+
+.banner-arte--feed[data-jogos="3"] .banner-card-jogo--com-goleadores .banner-escudo {
+  width: 72px;
+  height: 72px;
+}
+
+.banner-arte--feed .banner-card-jogo {
+  grid-template-columns: minmax(0, 1fr) 288px minmax(0, 1fr);
+  gap: 9px;
+  padding: 9px 15px;
+  border-radius: 15px;
+}
+
+.banner-arte--feed .banner-equipe {
+  gap: 3px;
+}
+
+.banner-arte--feed .banner-time-nome {
+  min-height: 39px;
+  padding: 0 3px;
+  font-size: 24px;
+}
+
+.banner-arte--feed .banner-time-nome--longo {
+  font-size: 21px;
+}
+
+.banner-arte--feed .banner-goleadores {
+  min-height: 24px;
+  max-height: none;
+  overflow: visible;
+  padding: 0 0 3px;
+  font-size: 15px;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.banner-arte--feed .banner-card-jogo--com-goleadores .banner-escudo {
+  width: 102px;
+  height: 102px;
+}
+
+.banner-arte--feed .banner-confronto {
+  gap: 21px;
+}
+
+.banner-arte--feed .banner-versus {
+  top: -24px;
+  left: -15px;
+  width: 100%;
+  height: 84px;
+  margin: 0;
+  font-size: 90px;
+  line-height: 1;
+}
+
+.banner-arte--feed .banner-placar {
+  top: -15px;
+  width: 100%;
+  height: 78px;
+  gap: 6px;
+  margin: 0;
+  font-size: 78px;
+  line-height: 1;
+}
+
+.banner-arte--feed .banner-placar b {
+  min-width: 60px;
+  height: 78px;
+  padding: 0;
+  font-size: inherit;
+}
+
+.banner-arte--feed .banner-placar span {
+  font-size: 36px;
+}
+
+.banner-arte--feed .banner-card-tags {
+  width: 288px;
+  gap: 9px;
+  margin-top: 0;
+}
+
+.banner-arte--feed .banner-card-tags span {
+  height: 66px;
+  min-height: 66px;
+  gap: 9px;
+  padding: 9px 12px;
+  border-radius: 9px;
+  font-size: 30px;
+}
+
+.banner-arte--feed .banner-card-tags b {
+  top: -14px;
+  left: 0;
+  height: 39px;
+}
+
+.banner-arte--feed .banner-tag--data { width: 138px; }
+.banner-arte--feed .banner-tag--hora { width: 141px; }
+
+.banner-arte--feed .banner-card-tags i {
+  top: -14px;
+  left: 0;
+  width: 30px;
+  height: 30px;
+  flex-basis: 30px;
+  font-size: 30px;
+}
+
+.banner-arte--feed .banner-tag--data > b,
+.banner-arte--feed .banner-tag--data > i {
+  left: -2px;
+}
+
+.banner-arte--feed .banner-arte-rodape {
+  height: 180px;
+  min-height: 0;
+  display: flex;
+  flex: 0 0 180px;
+  gap: 9px;
+  padding: 3px 27px 15px;
+}
+
+.banner-arte--feed .banner-frase {
+  min-height: 72px;
+  grid-template-columns: 69px minmax(0, 1fr) 69px;
+  gap: 9px;
+}
+
+.banner-arte--feed .banner-frase > img {
+  width: 69px;
+  height: 69px;
+}
+
+.banner-arte--feed .banner-frase strong {
+  font-size: 30px;
+}
+
+.banner-arte--feed .banner-frase span {
+  margin-top: 3px;
+  font-size: 15px;
+}
+
+.banner-arte--feed .banner-patrocinadores {
+  min-height: 108px;
+  padding: 9px 18px;
+  border-radius: 15px;
+}
+
+.banner-arte--feed .banner-logos-institucionais {
+  height: 81px;
+}
+
+.banner-arte--feed[data-jogos="3"] .banner-confronto {
+  gap: 6px;
+}
+
+.banner-arte--feed[data-jogos="3"] .banner-versus {
+  top: -8px;
+  left: -9px;
+  height: 48px;
+  font-size: 54px;
+}
+
+.banner-arte--feed[data-jogos="3"] .banner-placar {
+  top: -8px;
+  height: 45px;
+  font-size: 42px;
+}
+
+.banner-arte--feed[data-jogos="3"] .banner-placar b {
+  min-width: 39px;
+  height: 45px;
+}
+
+.banner-arte--feed[data-jogos="3"] .banner-card-tags {
+  width: 174px;
+  gap: 6px;
+}
+
+.banner-arte--feed[data-jogos="3"] .banner-card-tags span {
+  width: 84px;
+  height: 33px;
+  min-height: 33px;
+  padding: 3px 6px;
+  font-size: 15px;
+}
+
+.banner-arte--feed[data-jogos="3"] .banner-card-tags b {
+  top: -6px;
+  left: -2px;
+  height: 21px;
+}
+
+.banner-arte--feed[data-jogos="3"] .banner-card-tags i {
+  display: none;
+}
+
+.banner-arte--feed[data-denso="true"] {
+  --banner-escudo: 72px;
+}
+
+.banner-arte--feed[data-denso="true"] .banner-card-jogo {
+  grid-template-columns: minmax(0, 1fr) 186px minmax(0, 1fr);
+  padding: 6px 12px;
+}
+
+.banner-arte--feed[data-denso="true"] .banner-time-nome {
+  min-height: 27px;
+  font-size: 15px;
+}
+
+.banner-arte--feed[data-denso="true"] .banner-goleadores {
+  min-height: 12px;
+  max-height: 15px;
+  overflow: hidden;
+  padding: 0 0 3px;
+  font-size: 12px;
+  line-height: 1;
+}
+
+.banner-arte--feed[data-denso="true"] .banner-card-jogo--com-goleadores .banner-escudo {
+  width: 60px;
+  height: 60px;
+}
+
+.banner-arte--feed[data-denso="true"] .banner-versus {
+  top: -10px;
+  left: -9px;
+  height: 60px;
+  font-size: 63px;
+}
+
+.banner-arte--feed[data-denso="true"] .banner-placar {
+  top: -10px;
+  height: 60px;
+  font-size: 54px;
+}
+
+.banner-arte--feed[data-denso="true"] .banner-placar b {
+  min-width: 48px;
+  height: 60px;
+  font-size: inherit;
+}
+
+.banner-arte--feed[data-denso="true"] .banner-card-tags {
+  width: 174px;
+  gap: 6px;
+}
+
+.banner-arte--feed[data-denso="true"] .banner-card-tags span {
+  height: 36px;
+  min-height: 36px;
+  padding: 3px 6px;
+  font-size: 15px;
+}
+
+.banner-arte--feed[data-denso="true"] .banner-card-tags b {
+  top: -7px;
+  left: -2px;
+  height: 21px;
+}
+
+.banner-arte--feed[data-denso="true"] .banner-tag--data,
+.banner-arte--feed[data-denso="true"] .banner-tag--hora {
+  width: 84px;
+}

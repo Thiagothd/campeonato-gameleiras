@@ -16,7 +16,9 @@ Site estático (HTML/CSS/JS puro, sem framework, sem build step) do
 grupos, jogos/resultados, ranking de artilheiros e lista de times. Tem um
 painel **"Gerenciar"** (protegido por senha) onde os organizadores cadastram
 jogos, placares, times e escudos — tudo isso salva na nuvem (Firebase) e
-atualiza **em tempo real** para todo mundo que estiver com o site aberto.
+atualiza **em tempo real** para todo mundo que estiver com o site aberto. O
+painel também tem um gerador local de banners; essa ferramenta não grava
+nada no Firebase.
 
 - **Site em produção (usuários reais, dono é cliente "Speedline"):**
   https://campeonato.speedlinemg.com.br
@@ -63,14 +65,31 @@ conta por baixo dos panos. A senha real fica só no Firebase Console
 do próprio documento do Firestore** — não usa Firebase Storage porque agora
 exige plano pago; ver `processarImagemEscudo` em app.js).
 
+**Gerador de banners:** usa `html2canvas@1.4.1` minificado e fixado via
+jsDelivr no `index.html`. O template de captura usa dimensões nativas fixas
+de 1080×1920 (Story) ou 1080×1080 (Feed), com `scale: 1` e `useCORS: true`.
+A prévia exibe o próprio canvas nativo redimensionado apenas visualmente, e o
+download reutiliza esse mesmo canvas; assim, prévia e PNG possuem exatamente
+os mesmos pixels. Escudos/logos usam caminhos locais ou data URI; o fundo
+enviado pelo usuário é processado localmente e limitado a 12 MB. O estado do
+editor existe apenas em memória e nunca entra em `STATE`.
+O visual padrão segue o modelo de referência aprovado pelo cliente: fundo
+de estádio noturno com holofotes, pincelada branca sob o logo, título em
+duas linhas, data em box lateral, cards escuros com `VS`/placar e tags de
+data/hora, frase com bolas e faixa branca institucional no rodapé. A
+moldura fica isolada em `assets/css/banner-modelo.css`; fundos, bola e
+marcas institucionais ficam em `assets/img/banners/`.
+
 **Versionamento de cache:** todo CSS/JS é servido com `?v=N` no
 `index.html`, e existe `const CACHE_VER = "N"` em `app.js` (usado só pra
 imagens/logo, `comVersao()`). **⚠️ REGRA IMPORTANTE:** sempre que qualquer
 CSS ou JS mudar, incremente **TODOS** os `?v=` do `index.html` (dados.js,
-db.js, app.js, estilo.css) e o `CACHE_VER` do app.js, para o mesmo número
-novo. Já tivemos um bug real de produção por esquecer disso (cache
-misturando JS antigo com HTML novo). Valor em produção: **v=25**. A branch
-`feat/ajustes-visuais` está em **v=27** enquanto aguarda validação/deploy.
+db.js, app.js, estilo.css e banner-modelo.css) e o `CACHE_VER` do app.js,
+para o mesmo número novo. Já tivemos um bug real de produção por esquecer
+disso (cache
+misturando JS antigo com HTML novo). Valor atual em produção: **v=27**.
+A branch `feat/gerador-banners` está em **v=39** enquanto aguarda validação
+do cliente e eventual deploy.
 
 ## 3. Como o deploy funciona (IMPORTANTE)
 
@@ -117,7 +136,23 @@ necessidade estrita.
 6. Verificar produção no ar de verdade (não confiar só no "deploy disse
    sucesso" — checar HTTP, abrir com Puppeteer, comparar banco antes/depois).
 
-## 5. Estado atual (última entrega concluída e publicada)
+## 5. Estado atual (últimas entregas concluídas e publicadas)
+
+**Ajustes visuais (itens 1 e 3) — CONCLUÍDOS e EM PRODUÇÃO** (deploy em
+29/07/2026, v=27, verificado ponta a ponta):
+- **Melhores terceiros** (`calcularMelhoresTerceiros` em app.js): compara os
+  3ºs colocados de todos os grupos por pontos → saldo de gols; os 2 melhores
+  recebem faixa azul (`.zona-melhor-terceiro`, `--azul-classificacao: #4aa3ff`
+  — mesmo tom do badge do Grupo A). Recalculado a cada atualização de dados.
+  Inclui texto acessível (`.sr-only`) para leitores de tela. A legenda de
+  zona ("Zona de classificação") foi REMOVIDA a pedido do cliente.
+- **Favicon**: `<link rel="icon">` no `<head>` apontando para
+  `assets/img/campeonato.webp?v=27` (a logo oficial já otimizada).
+- Validado antes do deploy: 6 casos de borda da lógica (grupo com <3 times,
+  banco vazio, empate absoluto triplo, desempate por saldo), dados REAIS de
+  produção, visual em 320/360/768/1120px, regressão zero nas abas
+  Jogos/Artilheiros/Times, zero erros de JS. Confirmado em produção depois
+  do deploy: Nova Era e Vila do Jacu em azul, EF Gama fora (saldo -7).
 
 **Feature "Artilheiros" — CONCLUÍDA e EM PRODUÇÃO** (deploy feito com
 sucesso, verificado ponta a ponta):
@@ -159,9 +194,16 @@ logo do rodapé, arquivos de preview soltos na raiz).
   identificado numa auditoria de segurança; **o dono do projeto avaliou o
   risco e decidiu manter assim de propósito** (projeto local, fechado,
   baixo risco real). Não "corrija" isso sem o cliente pedir de novo.
-- **Favicon:** implementado localmente na branch `feat/ajustes-visuais`
-  usando `assets/img/campeonato.webp?v=27`; ainda não está em produção
-  (ver §7).
+- **Favicon:** JÁ EM PRODUÇÃO, usando `assets/img/campeonato.webp?v=27`.
+  Deu certo porque o `.assetsignore` bloqueia `.png/.jpg/.jpeg` mas NÃO
+  bloqueia `.webp` — se um dia trocar o favicon por PNG, precisa de
+  allow-list explícito (mesmo caso da logo do rodapé).
+- **Deploy pode falhar de forma transiente:** no deploy de 29/07 o wrangler
+  quebrou com exit code -1073740791 (crash do processo no Windows,
+  STATUS_STACK_BUFFER_OVERRUN) na primeira tentativa, e funcionou na
+  segunda, sem nenhuma mudança. Se acontecer: **produção não é afetada**
+  (o upload nem chega a trocar a versão), é só tentar de novo. Verificar
+  antes se produção continua no ar (curl na home) para ter certeza.
 - **Word "Codex"/hand-off:** o dono as vezes trabalha com Claude e às
   vezes com o Codex (outra IA) nas mesmas branches. Sempre commitar com
   mensagens claras e por etapa — é assim que o próximo agente entende o
@@ -169,35 +211,48 @@ logo do rodapé, arquivos de preview soltos na raiz).
 
 ## 7. TAREFA EM ANDAMENTO AGORA — 3 ajustes visuais pedidos pelo cliente
 
-Branch já criada: **`feat/ajustes-visuais`** (a partir de `main`, que já
-tem o Artilheiros publicado). Segue o mesmo processo do §4.
+Itens 1 e 3 vieram da branch `feat/ajustes-visuais` e já estão em produção.
+O item 2 está sendo desenvolvido separadamente na branch
+**`feat/gerador-banners`**, criada a partir da `main` em v=27.
 
 Pedidos (nas palavras do cliente):
-1. **"Colocar alguma cor (a que combine mais) para terceiro lugar"** —
-   **IMPLEMENTADO E TESTADO LOCALMENTE, ainda NÃO publicado.** A regra
-   explicada pelo cliente é: passam os dois melhores terceiros colocados
-   entre os grupos, comparando primeiro pontos e depois saldo de gols. A
-   seleção é recalculada a cada atualização dos jogos. Os dois primeiros de
-   cada grupo continuam verdes; os dois melhores terceiros recebem faixa
-   azul (`.zona-melhor-terceiro`). A pedido do cliente, não há legenda
-   visual explicando as cores.
-   Em empate absoluto de pontos e saldo na vaga de corte, a ordenação fica
-   estável pela ordem dos grupos (A, B, C); confirmar com o cliente se existe
-   um terceiro critério oficial antes do deploy.
-2. **"Criar um gerador de banner"** — ainda sem detalhes do que deve gerar
-   exatamente (banner de quê? resultado de jogo pra compartilhar? divulgação
-   da rodada? formato de imagem pra baixar/compartilhar no WhatsApp?).
-   **Aguardando esclarecimento do cliente.**
-3. **"Colocar logo no ícone da aba do navegador"** (favicon) —
-   **IMPLEMENTADO E TESTADO LOCALMENTE, ainda NÃO publicado.** O `<head>` do
-   `index.html` referencia diretamente `assets/img/campeonato.webp?v=27`,
-   a mesma logo oficial e otimizada usada no cabeçalho.
 
-### Status: itens 1 e 3 implementados na branch. O item 1 foi validado em
-320/360/768/1280 px, incluindo troca dos grupos classificados após uma nova
-rodada, desempate por saldo, sintaxe e ausência de acesso ao Firebase real.
-O favicon do item 3 foi validado no Chrome local. O item 2 ainda não foi
-implementado. Nada desta branch foi publicado.
+1. ✅ **"Colocar alguma cor para terceiro lugar"** — **CONCLUÍDO E EM
+   PRODUÇÃO** (detalhes no §5). Regra do cliente: passam os dois melhores
+   terceiros colocados entre os grupos, comparando pontos e depois saldo.
+   ⚠️ Ponto em aberto (baixa prioridade): em empate ABSOLUTO de pontos E
+   saldo na vaga de corte, o desempate hoje é a ordem dos grupos (A, B, C).
+   Vale confirmar com o cliente se o regulamento tem um terceiro critério
+   oficial (ex.: gols pró, confronto direto). Não bloqueia nada hoje.
+2. 🧪 **"Criar um gerador de banner"** — **IMPLEMENTADO E TESTADO
+   LOCALMENTE, ainda NÃO publicado.** Nova sub-aba `Gerar Banner` no
+   Gerenciador com:
+   - Próximos jogos ou resultados; Story 9:16 ou Feed 1:1.
+   - Filtros combinados por grupo/rodada e time, com seleção múltipla de jogos.
+   - Título/subtítulo editáveis, três fundos da identidade e upload local.
+   - Template fiel ao modelo oficial: estádio/holofotes, logo sobre
+     pincelada, título em duas linhas, data lateral e cards escuros.
+   - Escudos, `VS` ou placar, tags de data/hora, frase com bolas e rodapé
+     branco com Diretoria de Esportes, Prefeitura e Speedline.
+   - Download PNG via `html2canvas` em 1080×1920/1080×1080 e
+     compartilhamento via `navigator.share`; se indisponível, baixa o PNG.
+   - Nenhuma configuração/imagem é salva no Firestore.
+   Arquivos alterados: `index.html`, `assets/js/app.js`,
+   `assets/css/estilo.css`, `assets/css/banner-modelo.css`,
+   `assets/img/banners/*`, `LEIA-ME.md` e este `CONTEXTO.md`.
+3. ✅ **"Colocar logo no ícone da aba do navegador"** (favicon) —
+   **CONCLUÍDO E EM PRODUÇÃO** (detalhes no §5).
+
+### Status: itens 1 e 3 auditados, mesclados na `main` e publicados em
+produção em 29/07/2026 (v=27), com backups do banco e do código em
+`backups/` e tag de rollback `pre-ajustes-visuais-20260729-144645`.
+O item 2 está em `v=39` e passou localmente por Chrome headless em
+320/768/1280 px, sem
+overflow ou erros JS, sem acesso ao Firebase, com imagens válidas e dois
+PNGs reais: Story 1080×1920 (~2,2 MB) e Feed 1080×1080 (~1,1 MB). Upload
+personalizado e compartilhamento de arquivo também foram validados. Falta a
+aprovação visual do cliente; nada da branch `feat/gerador-banners` foi
+publicado.
 
 ## 8. Como testar (lembrete rápido)
 
