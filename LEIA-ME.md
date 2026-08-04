@@ -23,10 +23,27 @@ No site, canto inferior direito, há o botão **🔒 Gerenciar**.
    código — veja "Trocar a senha" abaixo).
 2. Aba **Jogos & Placares**: crie jogos, digite o placar e salve.
 3. Aba **Times**: cadastre/edite times e o arquivo do escudo.
-4. Pronto — assim que salva, **todo mundo já vê** a tabela atualizada.
+4. Aba **Gerar Banner**: escolha jogos/resultados e baixe uma arte pronta.
+5. Pronto — assim que salva, **todo mundo já vê** a tabela atualizada.
 
 No mesmo aparelho, depois de digitar a senha uma vez, ele **lembra** — não
 pede de novo.
+
+### Gerar banners para redes sociais
+
+Na aba **Gerar Banner** do Gerenciador:
+
+1. Escolha **Próximos jogos** ou **Resultados**.
+2. Selecione Story (`1080 × 1920`) ou Feed (`1080 × 1080`).
+3. Filtre por grupo/rodada e por time, depois marque os jogos que entrarão na arte.
+4. Ajuste título, dia/mês e o fundo. **Modelo Gameleiras** reproduz a arte
+   oficial com estádio, data lateral, cards escuros e rodapé institucional;
+   também é possível enviar uma imagem PNG, JPG ou WebP de até 12 MB.
+5. Use **Atualizar prévia**, **Baixar PNG** ou **Compartilhar**.
+
+O gerador funciona apenas no navegador e **não salva a imagem nem suas
+configurações no Firebase**. Em aparelhos sem compartilhamento direto, o
+botão **Compartilhar** baixa o PNG para envio manual.
 
 ### Indicador de conexão
 No canto inferior esquerdo do site aparece um selo:

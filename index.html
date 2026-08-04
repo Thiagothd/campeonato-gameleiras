@@ -5,11 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#0a3d2b">
   <title>Campeonato Municipal de Futebol de Gameleiras</title>
-  <link rel="icon" type="image/webp" href="assets/img/campeonato.webp?v=27">
+  <link rel="icon" type="image/webp" href="assets/img/campeonato.webp?v=39">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Anton&family=Barlow+Condensed:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="assets/css/estilo.css?v=27">
+  <link rel="stylesheet" href="assets/css/estilo.css?v=39">
+  <link rel="stylesheet" href="assets/css/banner-modelo.css?v=39">
 </head>
 <body>
 
@@ -120,6 +121,7 @@
       <div class="ger-tabs">
         <button class="ger-tab ativo" data-ger="jogos">Jogos &amp; Placares</button>
         <button class="ger-tab" data-ger="times">Times</button>
+        <button class="ger-tab" data-ger="banners">Gerar Banner</button>
       </div>
 
       <div id="ger-aviso" class="ger-aviso">
@@ -173,12 +175,136 @@
           <div id="ger-times-lista" class="ger-lista"></div>
           <div id="ger-form-time" class="ger-form"></div>
         </div>
+
+        <!-- Gerador de banners -->
+        <div class="ger-secao" data-ger="banners">
+          <div class="ger-secao-top banner-secao-top">
+            <div>
+              <h4>Gerador de banners</h4>
+              <p>Crie artes em alta resolução para redes sociais.</p>
+            </div>
+            <span class="banner-resolucao" id="banner-resolucao">1080 × 1920 PNG</span>
+          </div>
+
+          <div class="banner-editor">
+            <div class="banner-controles">
+              <fieldset class="banner-campo">
+                <legend>Tipo de banner</legend>
+                <div class="banner-segmentado">
+                  <label>
+                    <input class="sr-only" type="radio" name="banner-tipo" value="proximos" checked>
+                    <span>Próximos jogos</span>
+                  </label>
+                  <label>
+                    <input class="sr-only" type="radio" name="banner-tipo" value="resultados">
+                    <span>Resultados</span>
+                  </label>
+                </div>
+              </fieldset>
+
+              <div class="banner-campos-duplos">
+                <fieldset class="banner-campo">
+                  <legend>Formato</legend>
+                  <div class="banner-segmentado banner-segmentado--formato">
+                    <label>
+                      <input class="sr-only" type="radio" name="banner-formato" value="story" checked>
+                      <span>Story 9:16</span>
+                    </label>
+                    <label>
+                      <input class="sr-only" type="radio" name="banner-formato" value="feed">
+                      <span>Feed 1:1</span>
+                    </label>
+                  </div>
+                </fieldset>
+
+                <div class="campo banner-campo-select">
+                  <label for="banner-filtro">Grupo / rodada</label>
+                  <select id="banner-filtro"></select>
+                </div>
+              </div>
+
+              <div class="campo banner-campo-select">
+                <label for="banner-time">Filtrar por time</label>
+                <select id="banner-time">
+                  <option value="">Todos os Times</option>
+                </select>
+              </div>
+
+              <div class="banner-lista-topo">
+                <label>Seleção de jogos <span id="banner-selecionados-contagem">0 selecionados</span></label>
+                <div>
+                  <button type="button" class="btn-mini" data-acao="banner-selecionar-todos">Todos</button>
+                  <button type="button" class="btn-mini" data-acao="banner-limpar-selecao">Limpar</button>
+                </div>
+              </div>
+              <div id="banner-jogos-lista" class="banner-jogos-selecao" aria-live="polite"></div>
+
+              <div class="campo">
+                <label for="banner-titulo">Título customizado</label>
+                <input type="text" id="banner-titulo" maxlength="48" value="JOGOS DA RODADA">
+              </div>
+
+              <div class="campo">
+                <label for="banner-subtitulo">Dia / mês em destaque</label>
+                <input type="text" id="banner-subtitulo" maxlength="72" placeholder="02 DE AGOSTO">
+              </div>
+
+              <div class="banner-campos-duplos banner-fundo-controles">
+                <div class="campo">
+                  <label for="banner-fundo">Foto de fundo</label>
+                  <select id="banner-fundo">
+                    <option value="classico">Modelo Gameleiras</option>
+                    <option value="noturno">Estádio noturno</option>
+                    <option value="dourado">Noite dourada</option>
+                    <option value="personalizado">Imagem personalizada</option>
+                  </select>
+                </div>
+                <div class="campo banner-upload-campo">
+                  <label>Upload personalizado</label>
+                  <label class="btn btn--ghost btn--arquivo" for="banner-fundo-arquivo">Escolher imagem</label>
+                  <input class="campo-arquivo-input" type="file" id="banner-fundo-arquivo"
+                         accept="image/png,image/jpeg,image/webp">
+                </div>
+              </div>
+              <div class="banner-arquivo-info">
+                <span id="banner-fundo-nome">Nenhuma imagem selecionada</span>
+                <button type="button" class="btn-mini btn-mini--del" data-acao="banner-remover-fundo" hidden>Remover</button>
+              </div>
+            </div>
+
+            <div class="banner-preview-coluna">
+              <div class="banner-preview-topo">
+                <strong>Prévia</strong>
+                <span id="banner-preview-formato">Story · 1080 × 1920</span>
+              </div>
+              <div id="banner-preview-viewport" class="banner-preview-viewport">
+                <div id="banner-preview-stage" class="banner-preview-stage">
+                  <canvas id="banner-preview-bitmap" class="banner-preview-bitmap"
+                          width="1080" height="1920" aria-label="Prévia exata do banner"></canvas>
+                </div>
+              </div>
+              <div class="banner-acoes">
+                <button type="button" class="btn btn--ghost" data-acao="banner-atualizar">Atualizar prévia</button>
+                <button type="button" class="btn btn--dourado" data-acao="banner-baixar">Baixar PNG</button>
+                <button type="button" class="btn btn--verde" data-acao="banner-compartilhar">Compartilhar</button>
+              </div>
+              <p id="banner-status" class="banner-status" role="status" aria-live="polite"></p>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
 
-  <script defer src="assets/js/dados.js?v=27"></script>
-  <script type="module" async src="assets/js/db.js?v=27"></script>
-  <script defer src="assets/js/app.js?v=27"></script>
+  <div class="banner-export-host" aria-hidden="true">
+    <div id="banner-export-canvas" class="banner-render-canvas banner-render-canvas--story">
+      <div id="banner-export" class="banner-arte banner-arte--story"></div>
+    </div>
+  </div>
+
+  <script defer src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <script defer src="assets/js/dados.js?v=39"></script>
+  <script type="module" async src="assets/js/db.js?v=39"></script>
+  <script defer src="assets/js/app.js?v=39"></script>
 </body>
 </html>

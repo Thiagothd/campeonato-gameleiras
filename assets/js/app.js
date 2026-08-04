@@ -10,7 +10,7 @@
   "use strict";
 
   const IMG_TIMES = "assets/img/times/";
-  const CACHE_VER = "27"; // troque quando atualizar imagens/CSS/JS (força o navegador a rebaixar)
+  const CACHE_VER = "39"; // troque quando atualizar imagens/CSS/JS (força o navegador a rebaixar)
 
   function comVersao(base) {
     if (!base) return "";
@@ -525,17 +525,742 @@
       t.classList.toggle("ativo", t.dataset.ger === abaGer));
     document.querySelectorAll(".ger-secao").forEach((s) =>
       s.classList.toggle("ativo", s.dataset.ger === abaGer));
+    document.querySelector(".ger-caixa").classList.toggle("ger-caixa--larga", abaGer === "banners");
 
     aplicarStatusNuvem();
 
     if (abaGer === "jogos") renderGerJogos();
     if (abaGer === "times") renderGerTimes();
+    if (abaGer === "banners") renderGerBanner();
   }
 
   function opcoesTimes(selecionado) {
     return STATE.times.map((t) =>
       `<option value="${t.id}" ${t.id === selecionado ? "selected" : ""}>${escapeHtml(t.nome)} (${t.grupo})</option>`
     ).join("");
+  }
+
+  /* =======================================================================
+     GERADOR DE BANNERS (estado somente local; nunca vai para o Firestore)
+     ======================================================================= */
+  const BANNER_LARGURA = 1080;
+  const BANNER_ALTURAS = { story: 1920, feed: 1080 };
+  const bannerEstado = {
+    inicializado: false,
+    tipo: "proximos",
+    formato: "story",
+    filtro: "todos",
+    time: "",
+    titulo: "JOGOS DA RODADA",
+    subtitulo: "",
+    subtituloEditado: false,
+    fundo: "classico",
+    fundoPersonalizado: "",
+    fundoNome: "",
+    selecionados: new Set(),
+  };
+  let bannerGerando = false;
+  let bannerRevisao = 0;
+  let bannerRevisaoRenderizada = -1;
+  let bannerCanvasRenderizado = null;
+  let bannerRenderPromise = null;
+  let bannerRenderTimer = null;
+
+  function tituloPadraoBanner() {
+    return bannerEstado.tipo === "resultados" ? "RESULTADOS DA RODADA" : "JOGOS DA RODADA";
+  }
+
+  function jogosDoTipoBanner() {
+    const resultados = bannerEstado.tipo === "resultados";
+    return STATE.jogos
+      .map((j, i) => ({ j, i }))
+      .filter(({ j }) => jogoRealizado(j) === resultados)
+      .sort((a, b) =>
+        String(a.j.data || "9999-99-99").localeCompare(String(b.j.data || "9999-99-99")) ||
+        String(a.j.hora || "").localeCompare(String(b.j.hora || "")) ||
+        Number(a.j.rodada || 0) - Number(b.j.rodada || 0));
+  }
+
+  function jogosVisiveisBanner() {
+    return jogosDoTipoBanner().filter(({ j }) => {
+      if (bannerEstado.filtro.indexOf("grupo:") === 0) {
+        if (grupoDoJogo(j) !== bannerEstado.filtro.slice(6)) return false;
+      }
+      if (bannerEstado.filtro.indexOf("rodada:") === 0) {
+        if (String(j.rodada) !== bannerEstado.filtro.slice(7)) return false;
+      }
+      if (bannerEstado.time && j.mandante !== bannerEstado.time && j.visitante !== bannerEstado.time) return false;
+      return true;
+    });
+  }
+
+  function jogosSelecionadosBanner() {
+    return jogosVisiveisBanner().filter(({ i }) => bannerEstado.selecionados.has(i));
+  }
+
+  function selecionarPadraoBanner() {
+    bannerEstado.selecionados.clear();
+    jogosVisiveisBanner().slice(0, 2).forEach(({ i }) => bannerEstado.selecionados.add(i));
+  }
+
+  function formatarDataCurtaBanner(iso) {
+    if (!iso) return "DATA A DEFINIR";
+    const partes = String(iso).split("-");
+    if (partes.length !== 3) return String(iso);
+    return `${partes[2]}/${partes[1]}`;
+  }
+
+  function subtituloSugeridoBanner() {
+    const selecionados = jogosSelecionadosBanner();
+    if (!selecionados.length) return "";
+
+    const rodadas = Array.from(new Set(selecionados.map(({ j }) => j.rodada)
+      .filter((r) => r !== "" && r != null)));
+    const datas = Array.from(new Set(selecionados.map(({ j }) => j.data).filter(Boolean))).sort();
+    const partes = [];
+
+    if (rodadas.length === 1) partes.push(`RODADA ${rodadas[0]}`);
+    if (datas.length) {
+      const meses = ["JANEIRO", "FEVEREIRO", "MARÇO", "ABRIL", "MAIO", "JUNHO",
+        "JULHO", "AGOSTO", "SETEMBRO", "OUTUBRO", "NOVEMBRO", "DEZEMBRO"];
+      const datasPartes = datas.map((d) => d.split("-"));
+      const mesmoMes = datasPartes.every((p) =>
+        p.length === 3 && p[0] === datasPartes[0][0] && p[1] === datasPartes[0][1]);
+      if (mesmoMes) {
+        partes.push(`${datasPartes.map((p) => p[2]).join(" E ")} DE ${meses[Number(datasPartes[0][1]) - 1]}`);
+      } else {
+        partes.push(datas.map(formatarDataCurtaBanner).join(" E "));
+      }
+    }
+
+    return partes.join(" · ");
+  }
+
+  function inicializarBanner() {
+    if (bannerEstado.inicializado) return;
+    bannerEstado.tipo = STATE.jogos.some((j) => !jogoRealizado(j)) ? "proximos" : "resultados";
+    bannerEstado.titulo = tituloPadraoBanner();
+    bannerEstado.inicializado = true;
+    selecionarPadraoBanner();
+    bannerEstado.subtitulo = subtituloSugeridoBanner();
+  }
+
+  function renderFiltrosBanner() {
+    const select = document.getElementById("banner-filtro");
+    const selectTime = document.getElementById("banner-time");
+    const jogos = jogosDoTipoBanner();
+    const gruposComJogos = STATE.grupos.filter((g) =>
+      jogos.some(({ j }) => grupoDoJogo(j) === g.id));
+    const rodadas = Array.from(new Set(jogos.map(({ j }) => j.rodada)
+      .filter((r) => r !== "" && r != null)))
+      .sort((a, b) => String(a).localeCompare(String(b), "pt-BR", { numeric: true }));
+
+    let html = `<option value="todos">Todos os jogos</option>`;
+    if (gruposComJogos.length) {
+      html += `<optgroup label="Grupos">${gruposComJogos.map((g) =>
+        `<option value="grupo:${escapeHtml(g.id)}">${escapeHtml(g.nome)}</option>`).join("")}</optgroup>`;
+    }
+    if (rodadas.length) {
+      html += `<optgroup label="Rodadas">${rodadas.map((r) =>
+        `<option value="rodada:${escapeHtml(String(r))}">Rodada ${escapeHtml(String(r))}</option>`).join("")}</optgroup>`;
+    }
+    select.innerHTML = html;
+    select.value = bannerEstado.filtro;
+    if (!select.value) {
+      bannerEstado.filtro = "todos";
+      select.value = "todos";
+    }
+
+    selectTime.innerHTML = '<option value="">Todos os Times</option>' +
+      STATE.times.map((t) =>
+        `<option value="${escapeHtml(t.id)}">${escapeHtml(t.nome)}</option>`).join("");
+    selectTime.value = bannerEstado.time;
+    if (bannerEstado.time && !selectTime.value) bannerEstado.time = "";
+  }
+
+  function renderListaJogosBanner() {
+    const visiveis = jogosVisiveisBanner();
+    const validos = new Set(visiveis.map(({ i }) => i));
+    bannerEstado.selecionados = new Set(
+      Array.from(bannerEstado.selecionados).filter((i) => validos.has(i))
+    );
+
+    document.getElementById("banner-jogos-lista").innerHTML = visiveis.map(({ j, i }) => {
+      const realizado = jogoRealizado(j);
+      const placar = realizado ? ` · ${j.golsMandante} × ${j.golsVisitante}` : "";
+      const meta = [
+        grupoDoJogo(j) ? `Grupo ${grupoDoJogo(j)}` : "",
+        j.rodada ? `Rodada ${j.rodada}` : "",
+        formatarDataCurtaBanner(j.data),
+        j.hora || "",
+      ].filter(Boolean).join(" · ");
+      return `
+        <label class="banner-jogo-opcao">
+          <input type="checkbox" data-banner-jogo="${i}" ${bannerEstado.selecionados.has(i) ? "checked" : ""}>
+          <span class="banner-jogo-opcao-texto">
+            <b>${escapeHtml(nomeTime(j.mandante))} × ${escapeHtml(nomeTime(j.visitante))}${escapeHtml(placar)}</b>
+            <small>${escapeHtml(meta)}</small>
+          </span>
+        </label>`;
+    }).join("") || `<p class="banner-jogos-vazio">Nenhum ${bannerEstado.tipo === "resultados" ? "resultado" : "próximo jogo"} disponível com este filtro.</p>`;
+
+    const quantidade = bannerEstado.selecionados.size;
+    document.getElementById("banner-selecionados-contagem").textContent =
+      `${quantidade} ${quantidade === 1 ? "selecionado" : "selecionados"}`;
+  }
+
+  function srcLogoCampeonatoBanner() {
+    const logo = STATE.config.logo || "campeonato.webp";
+    if (logo.indexOf("http") === 0 || logo.indexOf("data:") === 0 || logo.indexOf("blob:") === 0) return logo;
+    return comVersao("assets/img/" + logo);
+  }
+
+  function bannerEscudoHTML(time) {
+    const nome = time ? time.nome : "Time";
+    const src = time && time.escudo ? srcEscudo(time.escudo) : "";
+    return `<span class="banner-escudo" style="--cor:${time ? corDoTime(time.id) : "#315c49"}">
+      <span>${escapeHtml(iniciais(nome))}</span>
+      ${src ? `<img src="${escapeHtml(src)}" alt="" crossorigin="anonymous" onerror="this.remove()">` : ""}
+    </span>`;
+  }
+
+  function tituloEmLinhasBanner(titulo) {
+    const palavras = String(titulo || "").trim().toLocaleUpperCase("pt-BR").split(/\s+/).filter(Boolean);
+    if (!palavras.length) return { superior: "JOGOS DA", destaque: "RODADA" };
+
+    const rodada = palavras.lastIndexOf("RODADA");
+    if (rodada > 0 && rodada === palavras.length - 1) {
+      return {
+        superior: palavras.slice(0, rodada).join(" "),
+        destaque: palavras[rodada],
+      };
+    }
+
+    if (palavras.length === 1) return { superior: palavras[0], destaque: "" };
+    const corte = Math.max(1, Math.ceil(palavras.length / 2));
+    return {
+      superior: palavras.slice(0, corte).join(" "),
+      destaque: palavras.slice(corte).join(" "),
+    };
+  }
+
+  function dataDestaqueBanner(jogos) {
+    const meses = ["JANEIRO", "FEVEREIRO", "MARÇO", "ABRIL", "MAIO", "JUNHO",
+      "JULHO", "AGOSTO", "SETEMBRO", "OUTUBRO", "NOVEMBRO", "DEZEMBRO"];
+    const texto = String(bannerEstado.subtitulo || "").trim().toLocaleUpperCase("pt-BR");
+    const mesesRegex = meses.join("|");
+    const noTexto = texto.match(new RegExp(`(\\d{1,2})(?:\\s+E\\s+\\d{1,2})?\\s+DE\\s+(${mesesRegex})`));
+    const direto = texto.match(new RegExp(`\\b(\\d{1,2})\\s+(${mesesRegex})\\b`));
+    const encontrado = noTexto || direto;
+    if (encontrado) {
+      return { dia: encontrado[1].padStart(2, "0"), mes: encontrado[2] };
+    }
+
+    const primeiraData = jogos.map(({ j }) => j.data).find(Boolean);
+    const partes = String(primeiraData || "").split("-");
+    if (partes.length === 3) {
+      return {
+        dia: partes[2].padStart(2, "0"),
+        mes: meses[Number(partes[1]) - 1] || "MÊS",
+      };
+    }
+    return { dia: "--", mes: "A DEFINIR" };
+  }
+
+  function autoresGolsBanner(jogo, timeId) {
+    if (!jogoRealizado(jogo) || !Array.isArray(jogo.gols)) return "";
+    return jogo.gols
+      .filter((gol) => gol && gol.time === timeId && String(gol.jogador || "").trim())
+      .map((gol) => {
+        const nome = String(gol.jogador).trim();
+        const quantidade = Math.max(1, Number(gol.gols) || 1);
+        return quantidade > 1 ? `${nome} (${quantidade})` : nome;
+      })
+      .join(" · ");
+  }
+
+  function autoresGolsHTML(texto) {
+    if (!texto) return "";
+    const classeLonga = texto.length > 26 ? " banner-goleadores--longo" : "";
+    return `<span class="banner-goleadores${classeLonga}">${escapeHtml(texto)}</span>`;
+  }
+
+  function bannerJogoHTML(j) {
+    const idx = porId();
+    const mandante = idx[j.mandante] || { id: j.mandante, nome: nomeTime(j.mandante), escudo: "" };
+    const visitante = idx[j.visitante] || { id: j.visitante, nome: nomeTime(j.visitante), escudo: "" };
+    const realizado = jogoRealizado(j);
+    const nomeMandante = String(mandante.nome || "");
+    const nomeVisitante = String(visitante.nome || "");
+    const golsMandante = autoresGolsBanner(j, mandante.id);
+    const golsVisitante = autoresGolsBanner(j, visitante.id);
+    const temGoleadores = !!(golsMandante || golsVisitante);
+    const data = formatarDataCurtaBanner(j.data);
+    const hora = j.hora || "--:--";
+    const centro = realizado
+      ? `<div class="banner-placar"><b>${escapeHtml(String(j.golsMandante))}</b><span>×</span><b>${escapeHtml(String(j.golsVisitante))}</b></div>`
+      : `<div class="banner-versus">VS</div>`;
+
+    return `<article class="banner-card-jogo${temGoleadores ? " banner-card-jogo--com-goleadores" : ""}">
+      <div class="banner-equipe banner-equipe--mandante">
+        ${bannerEscudoHTML(mandante)}
+        <span class="banner-time-nome ${nomeMandante.length > 14 ? "banner-time-nome--longo" : ""}">${escapeHtml(nomeMandante)}</span>
+        ${autoresGolsHTML(golsMandante)}
+      </div>
+      <div class="banner-confronto">
+        ${centro}
+        <div class="banner-card-tags">
+          <span class="banner-tag banner-tag--data"><i>▦</i><b>${escapeHtml(data)}</b></span>
+          <span class="banner-tag banner-tag--hora"><i>◷</i><b>${escapeHtml(hora)}</b></span>
+        </div>
+      </div>
+      <div class="banner-equipe banner-equipe--visitante">
+        ${bannerEscudoHTML(visitante)}
+        <span class="banner-time-nome ${nomeVisitante.length > 14 ? "banner-time-nome--longo" : ""}">${escapeHtml(nomeVisitante)}</span>
+        ${autoresGolsHTML(golsVisitante)}
+      </div>
+    </article>`;
+  }
+
+  function bannerArteHTML(jogos) {
+    const titulo = bannerEstado.titulo.trim() || tituloPadraoBanner();
+    const tituloLinhas = tituloEmLinhasBanner(titulo);
+    const dataDestaque = dataDestaqueBanner(jogos);
+    const logoCampeonato = escapeHtml(srcLogoCampeonatoBanner());
+    const logosInstitucionais = escapeHtml(comVersao("assets/img/banners/logos-institucionais-gameleiras.webp"));
+    const bolaFutebol = escapeHtml(comVersao("assets/img/banners/bola-futebol.png"));
+    const corpo = jogos.length
+      ? `<div class="banner-arte-jogos" style="--qtd-jogos:${jogos.length}">${jogos.map(({ j }) => bannerJogoHTML(j)).join("")}</div>`
+      : `<div class="banner-arte-vazio">Selecione ao menos um jogo para montar o banner</div>`;
+
+    return `
+      <header class="banner-arte-cabecalho">
+        <span class="banner-logo-campeonato"><img src="${logoCampeonato}" alt="" crossorigin="anonymous"></span>
+        <div class="banner-chamada">
+          <div class="banner-titulos">
+            <span class="banner-titulo-superior">${escapeHtml(tituloLinhas.superior)}</span>
+            ${tituloLinhas.destaque ? `<span class="banner-titulo-destaque">${escapeHtml(tituloLinhas.destaque)}</span>` : ""}
+          </div>
+          <div class="banner-data-destaque">
+            <div class="banner-data-conteudo">
+              <strong>${escapeHtml(dataDestaque.dia)}</strong>
+              <span>${escapeHtml(dataDestaque.mes)}</span>
+              <small>★ &nbsp;·&nbsp; ★</small>
+            </div>
+          </div>
+        </div>
+      </header>
+      <main class="banner-arte-corpo">${corpo}</main>
+      <footer class="banner-arte-rodape">
+        <div class="banner-frase">
+          <img src="${bolaFutebol}" alt="" crossorigin="anonymous">
+          <div>
+            <strong>MUITO ALÉM DOS <em>90 MINUTOS</em></strong>
+            <span>Futebol une <b>histórias, famílias e gerações.</b></span>
+          </div>
+          <img src="${bolaFutebol}" alt="" crossorigin="anonymous">
+        </div>
+        <div class="banner-patrocinadores">
+          <img class="banner-logos-institucionais" src="${logosInstitucionais}" alt="" crossorigin="anonymous">
+        </div>
+      </footer>`;
+  }
+
+  function renderizarArteBanner(elemento, jogos) {
+    const temaPersonalizado = bannerEstado.fundo === "personalizado" && bannerEstado.fundoPersonalizado;
+    const tema = temaPersonalizado ? "personalizado" :
+      (bannerEstado.fundo === "noturno" || bannerEstado.fundo === "dourado" ? bannerEstado.fundo : "classico");
+    const tamanhoTitulo = bannerEstado.titulo.trim().length;
+    const tituloLongo = tamanhoTitulo > 25;
+    const tituloMuitoLongo = tamanhoTitulo > 38;
+    const subtituloLongo = bannerEstado.subtitulo.trim().length > 42;
+    const denso = jogos.length > 3;
+
+    elemento.className = `banner-arte banner-arte--${bannerEstado.formato} banner-tema--${tema}` +
+      (tituloLongo ? " banner-titulo--longo" : "") +
+      (tituloMuitoLongo ? " banner-titulo--muito-longo" : "") +
+      (subtituloLongo ? " banner-subtitulo--longo" : "");
+    elemento.dataset.jogos = String(jogos.length);
+    elemento.dataset.denso = denso ? "true" : "false";
+    elemento.style.removeProperty("background-image");
+    if (temaPersonalizado) {
+      elemento.style.backgroundImage =
+        `linear-gradient(rgba(3,25,16,.66), rgba(2,15,10,.8)), url("${bannerEstado.fundoPersonalizado}")`;
+    }
+    elemento.innerHTML = bannerArteHTML(jogos);
+  }
+
+  function configurarCanvasBanner(elemento, formato = bannerEstado.formato) {
+    if (!elemento) return;
+    elemento.className = `banner-render-canvas banner-render-canvas--${formato}`;
+  }
+
+  function ajustarEscalaPreviewBanner() {
+    const viewport = document.getElementById("banner-preview-viewport");
+    const stage = document.getElementById("banner-preview-stage");
+    if (!viewport || !stage) return;
+    const estilo = getComputedStyle(viewport);
+    const paddingHorizontal = parseFloat(estilo.paddingLeft) + parseFloat(estilo.paddingRight);
+    const larguraDisponivel = Math.max(1, viewport.clientWidth - paddingHorizontal);
+    const altura = BANNER_ALTURAS[bannerEstado.formato];
+    const escala = Math.min(1, Math.max(.1, larguraDisponivel / BANNER_LARGURA));
+    stage.style.width = `${BANNER_LARGURA * escala}px`;
+    stage.style.height = `${altura * escala}px`;
+  }
+
+  function atualizarPreviewBanner() {
+    bannerRevisao += 1;
+    const dimensoes = bannerEstado.formato === "story" ? "1080 × 1920" : "1080 × 1080";
+    document.getElementById("banner-resolucao").textContent = `${dimensoes} PNG`;
+    document.getElementById("banner-preview-formato").textContent =
+      `${bannerEstado.formato === "story" ? "Story" : "Feed"} · ${dimensoes}`;
+    requestAnimationFrame(ajustarEscalaPreviewBanner);
+    agendarRenderPreviewBanner();
+  }
+
+  function definirStatusBanner(texto, tipo) {
+    const status = document.getElementById("banner-status");
+    status.textContent = texto || "";
+    status.className = "banner-status" + (tipo ? ` banner-status--${tipo}` : "");
+  }
+
+  function sincronizarControlesBanner() {
+    document.querySelectorAll('input[name="banner-tipo"]').forEach((input) => {
+      input.checked = input.value === bannerEstado.tipo;
+    });
+    document.querySelectorAll('input[name="banner-formato"]').forEach((input) => {
+      input.checked = input.value === bannerEstado.formato;
+    });
+    document.getElementById("banner-titulo").value = bannerEstado.titulo;
+    document.getElementById("banner-subtitulo").value = bannerEstado.subtitulo;
+    document.getElementById("banner-fundo").value = bannerEstado.fundo;
+    document.getElementById("banner-time").value = bannerEstado.time;
+    document.getElementById("banner-fundo-nome").textContent =
+      bannerEstado.fundoNome || "Nenhuma imagem selecionada";
+    document.querySelector('[data-acao="banner-remover-fundo"]').hidden = !bannerEstado.fundoPersonalizado;
+  }
+
+  function renderGerBanner() {
+    inicializarBanner();
+    renderFiltrosBanner();
+    renderListaJogosBanner();
+    sincronizarControlesBanner();
+    atualizarPreviewBanner();
+  }
+
+  function aoTrocarTipoBanner(tipo) {
+    bannerEstado.tipo = tipo;
+    bannerEstado.filtro = "todos";
+    bannerEstado.time = "";
+    bannerEstado.titulo = tituloPadraoBanner();
+    bannerEstado.subtituloEditado = false;
+    renderFiltrosBanner();
+    selecionarPadraoBanner();
+    bannerEstado.subtitulo = subtituloSugeridoBanner();
+    renderListaJogosBanner();
+    sincronizarControlesBanner();
+    atualizarPreviewBanner();
+    definirStatusBanner("");
+  }
+
+  function aoTrocarFiltroBanner(filtro) {
+    bannerEstado.filtro = filtro;
+    selecionarPadraoBanner();
+    if (!bannerEstado.subtituloEditado) bannerEstado.subtitulo = subtituloSugeridoBanner();
+    renderListaJogosBanner();
+    sincronizarControlesBanner();
+    atualizarPreviewBanner();
+    definirStatusBanner("");
+  }
+
+  function aoTrocarTimeBanner(time) {
+    bannerEstado.time = time;
+    selecionarPadraoBanner();
+    if (!bannerEstado.subtituloEditado) bannerEstado.subtitulo = subtituloSugeridoBanner();
+    renderListaJogosBanner();
+    sincronizarControlesBanner();
+    atualizarPreviewBanner();
+    definirStatusBanner("");
+  }
+
+  function atualizarSubtituloAutomaticoBanner() {
+    if (!bannerEstado.subtituloEditado) {
+      bannerEstado.subtitulo = subtituloSugeridoBanner();
+      document.getElementById("banner-subtitulo").value = bannerEstado.subtitulo;
+    }
+  }
+
+  function lerArquivoComoDataURL(file) {
+    return new Promise((resolve, reject) => {
+      const leitor = new FileReader();
+      leitor.onload = () => resolve(leitor.result);
+      leitor.onerror = () => reject(leitor.error);
+      leitor.readAsDataURL(file);
+    });
+  }
+
+  function carregarImagemDataURL(dataUrl) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = reject;
+      img.src = dataUrl;
+    });
+  }
+
+  async function prepararFundoBanner(file) {
+    const dataUrl = await lerArquivoComoDataURL(file);
+    const img = await carregarImagemDataURL(dataUrl);
+    const maximo = 2400;
+    const escala = Math.min(1, maximo / Math.max(img.naturalWidth, img.naturalHeight));
+    if (escala === 1) return dataUrl;
+
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.round(img.naturalWidth * escala);
+    canvas.height = Math.round(img.naturalHeight * escala);
+    canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+    return canvas.toDataURL(file.type === "image/png" ? "image/png" : "image/jpeg", .92);
+  }
+
+  async function carregarFundoPersonalizadoBanner(file) {
+    if (!file) return;
+    if (!/^image\/(png|jpeg|webp)$/.test(file.type)) {
+      definirStatusBanner("Escolha uma imagem PNG, JPG ou WebP.", "erro");
+      return;
+    }
+    if (file.size > 12 * 1024 * 1024) {
+      definirStatusBanner("A imagem deve ter no máximo 12 MB.", "erro");
+      return;
+    }
+    definirStatusBanner("Preparando imagem de fundo…");
+    try {
+      bannerEstado.fundoPersonalizado = await prepararFundoBanner(file);
+      bannerEstado.fundoNome = file.name;
+      bannerEstado.fundo = "personalizado";
+      sincronizarControlesBanner();
+      atualizarPreviewBanner();
+      definirStatusBanner("Imagem personalizada aplicada.", "ok");
+    } catch (e) {
+      definirStatusBanner("Não foi possível abrir essa imagem.", "erro");
+    }
+  }
+
+  function removerFundoPersonalizadoBanner() {
+    bannerEstado.fundoPersonalizado = "";
+    bannerEstado.fundoNome = "";
+    bannerEstado.fundo = "classico";
+    document.getElementById("banner-fundo-arquivo").value = "";
+    sincronizarControlesBanner();
+    atualizarPreviewBanner();
+    definirStatusBanner("Fundo padrão restaurado.", "ok");
+  }
+
+  function esperarImagensBanner(elemento) {
+    return Promise.all(Array.from(elemento.querySelectorAll("img")).map((img) => {
+      if (img.complete) return Promise.resolve();
+      return new Promise((resolve) => {
+        const concluir = () => resolve();
+        img.addEventListener("load", concluir, { once: true });
+        img.addEventListener("error", concluir, { once: true });
+        setTimeout(concluir, 6000);
+      });
+    }));
+  }
+
+  async function esperarFontesBanner() {
+    if (!document.fonts) return;
+    await Promise.all([
+      document.fonts.load('400 156px "Anton"', "JOGOS DA RODADA VS 0123456789"),
+      document.fonts.load('700 51px "Barlow Condensed"', "08/08 13:20 AGOSTO GAMELEIRAS"),
+      document.fonts.load('700 21px "Inter"', "RESULTADOS HISTÓRIAS FAMÍLIAS GERAÇÕES"),
+    ]);
+    await document.fonts.ready;
+  }
+
+  function exibirCanvasPreviewBanner(canvas) {
+    const stage = document.getElementById("banner-preview-stage");
+    canvas.id = "banner-preview-bitmap";
+    canvas.className = "banner-preview-bitmap";
+    canvas.removeAttribute("style");
+    canvas.setAttribute("aria-label", "Prévia exata do banner");
+    stage.replaceChildren(canvas);
+    requestAnimationFrame(ajustarEscalaPreviewBanner);
+  }
+
+  async function capturarCanvasBanner() {
+    if (typeof window.html2canvas !== "function") {
+      throw new Error("O exportador html2canvas não foi carregado");
+    }
+
+    const formato = bannerEstado.formato;
+    const altura = BANNER_ALTURAS[formato];
+    const jogos = jogosSelecionadosBanner();
+    const alvo = document.getElementById("banner-export-canvas");
+    configurarCanvasBanner(alvo, formato);
+    renderizarArteBanner(document.getElementById("banner-export"), jogos);
+    await esperarFontesBanner();
+    await esperarImagensBanner(alvo);
+    await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+
+    return window.html2canvas(alvo, {
+      scale: 1,
+      useCORS: true,
+      allowTaint: false,
+      backgroundColor: null,
+      logging: false,
+      width: BANNER_LARGURA,
+      height: altura,
+      windowWidth: BANNER_LARGURA,
+      windowHeight: altura,
+    });
+  }
+
+  async function processarFilaRenderBanner() {
+    try {
+      while (bannerRevisaoRenderizada !== bannerRevisao) {
+        const revisao = bannerRevisao;
+        const canvas = await capturarCanvasBanner();
+        if (revisao !== bannerRevisao) continue;
+
+        bannerCanvasRenderizado = canvas;
+        bannerRevisaoRenderizada = revisao;
+        exibirCanvasPreviewBanner(canvas);
+      }
+      return bannerCanvasRenderizado;
+    } finally {
+      bannerRenderPromise = null;
+      if (bannerRevisaoRenderizada !== bannerRevisao) agendarRenderPreviewBanner();
+    }
+  }
+
+  function garantirCanvasBanner() {
+    if (bannerRenderTimer) {
+      clearTimeout(bannerRenderTimer);
+      bannerRenderTimer = null;
+    }
+    if (bannerCanvasRenderizado && bannerRevisaoRenderizada === bannerRevisao) {
+      return Promise.resolve(bannerCanvasRenderizado);
+    }
+    if (!bannerRenderPromise) bannerRenderPromise = processarFilaRenderBanner();
+    return bannerRenderPromise;
+  }
+
+  function agendarRenderPreviewBanner() {
+    if (bannerRenderTimer) clearTimeout(bannerRenderTimer);
+    bannerRenderTimer = setTimeout(() => {
+      bannerRenderTimer = null;
+      garantirCanvasBanner().catch((erro) => {
+        console.error("Erro ao atualizar prévia do banner:", erro);
+        definirStatusBanner("Não foi possível atualizar a prévia.", "erro");
+      });
+    }, 120);
+  }
+
+  async function atualizarPreviewAgoraBanner() {
+    atualizarPreviewBanner();
+    definirStatusBanner("Atualizando prévia…");
+    try {
+      await garantirCanvasBanner();
+      definirStatusBanner("Prévia atualizada. O download será exatamente igual.", "ok");
+    } catch (erro) {
+      console.error("Erro ao atualizar prévia do banner:", erro);
+      definirStatusBanner("Não foi possível atualizar a prévia.", "erro");
+    }
+  }
+
+  function nomeArquivoBanner() {
+    const tipo = bannerEstado.tipo === "resultados" ? "resultados" : "proximos-jogos";
+    const formato = bannerEstado.formato === "feed" ? "feed" : "story";
+    const data = new Date().toISOString().slice(0, 10);
+    return `campeonato-gameleiras-${tipo}-${formato}-${data}.png`;
+  }
+
+  function canvasParaBlob(canvas) {
+    return new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
+  }
+
+  function definirBotoesBannerDesabilitados(desabilitados) {
+    document.querySelectorAll(".banner-acoes .btn").forEach((botao) => {
+      botao.disabled = desabilitados;
+    });
+  }
+
+  async function gerarBlobBanner() {
+    if (bannerGerando) return null;
+    const jogos = jogosSelecionadosBanner();
+    if (!jogos.length) {
+      definirStatusBanner("Selecione pelo menos um jogo.", "erro");
+      return null;
+    }
+    if (typeof window.html2canvas !== "function") {
+      definirStatusBanner("O exportador não carregou. Verifique a internet e tente novamente.", "erro");
+      return null;
+    }
+
+    bannerGerando = true;
+    definirBotoesBannerDesabilitados(true);
+    definirStatusBanner("Gerando PNG em alta resolução…");
+    try {
+      const canvas = await garantirCanvasBanner();
+      const blob = await canvasParaBlob(canvas);
+      if (!blob) throw new Error("Falha ao converter o canvas");
+      definirStatusBanner(`PNG pronto: ${canvas.width} × ${canvas.height}px.`, "ok");
+      return { blob, nome: nomeArquivoBanner(), largura: canvas.width, altura: canvas.height };
+    } catch (e) {
+      console.error("Erro ao gerar banner:", e);
+      definirStatusBanner("Não foi possível gerar o PNG. Tente novamente.", "erro");
+      return null;
+    } finally {
+      bannerGerando = false;
+      definirBotoesBannerDesabilitados(false);
+    }
+  }
+
+  function baixarArquivoBanner(blob, nome) {
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = nome;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+  }
+
+  async function baixarBanner() {
+    const arquivo = await gerarBlobBanner();
+    if (!arquivo) return;
+    baixarArquivoBanner(arquivo.blob, arquivo.nome);
+    definirStatusBanner(`Banner baixado em ${arquivo.largura} × ${arquivo.altura}px.`, "ok");
+  }
+
+  async function compartilharBanner() {
+    const arquivo = await gerarBlobBanner();
+    if (!arquivo) return;
+    const file = new File([arquivo.blob], arquivo.nome, { type: "image/png" });
+    const dados = {
+      files: [file],
+      title: bannerEstado.titulo.trim() || tituloPadraoBanner(),
+      text: "Campeonato Municipal de Futebol de Gameleiras",
+    };
+    const podeCompartilhar = typeof navigator.share === "function" &&
+      (!navigator.canShare || navigator.canShare({ files: [file] }));
+
+    if (podeCompartilhar) {
+      try {
+        await navigator.share(dados);
+        definirStatusBanner("Banner enviado para compartilhamento.", "ok");
+        return;
+      } catch (e) {
+        if (e && e.name === "AbortError") {
+          definirStatusBanner("Compartilhamento cancelado.");
+          return;
+        }
+      }
+    }
+
+    baixarArquivoBanner(arquivo.blob, arquivo.nome);
+    definirStatusBanner("Compartilhamento direto indisponível; o PNG foi baixado.", "ok");
   }
 
   /* ---------- Salvar na nuvem (com feedback visual e reversão em erro) ---------- */
@@ -1114,6 +1839,49 @@
       }
     });
 
+    document.getElementById("ger-modal").addEventListener("input", (e) => {
+      if (e.target.id === "banner-titulo") {
+        bannerEstado.titulo = e.target.value;
+        atualizarPreviewBanner();
+      } else if (e.target.id === "banner-subtitulo") {
+        bannerEstado.subtitulo = e.target.value;
+        bannerEstado.subtituloEditado = true;
+        atualizarPreviewBanner();
+      }
+    });
+
+    document.getElementById("ger-modal").addEventListener("change", (e) => {
+      if (e.target.matches('input[name="banner-tipo"]')) {
+        aoTrocarTipoBanner(e.target.value);
+      } else if (e.target.matches('input[name="banner-formato"]')) {
+        bannerEstado.formato = e.target.value;
+        atualizarPreviewBanner();
+        definirStatusBanner("");
+      } else if (e.target.id === "banner-filtro") {
+        aoTrocarFiltroBanner(e.target.value);
+      } else if (e.target.id === "banner-time") {
+        aoTrocarTimeBanner(e.target.value);
+      } else if (e.target.matches("[data-banner-jogo]")) {
+        const indice = Number(e.target.dataset.bannerJogo);
+        if (e.target.checked) bannerEstado.selecionados.add(indice);
+        else bannerEstado.selecionados.delete(indice);
+        atualizarSubtituloAutomaticoBanner();
+        renderListaJogosBanner();
+        atualizarPreviewBanner();
+        definirStatusBanner("");
+      } else if (e.target.id === "banner-fundo") {
+        bannerEstado.fundo = e.target.value;
+        atualizarPreviewBanner();
+        if (bannerEstado.fundo === "personalizado" && !bannerEstado.fundoPersonalizado) {
+          definirStatusBanner("Escolha uma imagem para usar o fundo personalizado.");
+        } else {
+          definirStatusBanner("");
+        }
+      } else if (e.target.id === "banner-fundo-arquivo") {
+        carregarFundoPersonalizadoBanner(e.target.files && e.target.files[0]);
+      }
+    });
+
     document.getElementById("ger-modal").addEventListener("click", (e) => {
       const t = e.target.closest("[data-acao],[data-editar-jogo],[data-excluir-jogo],[data-editar-time],[data-excluir-time]");
       if (!t) return;
@@ -1121,11 +1889,33 @@
       else if (t.dataset.acao === "novo-time") formTime(null);
       else if (t.dataset.acao === "semear") semearNuvem();
       else if (t.dataset.acao === "limpar-filtros") limparFiltrosJogos();
+      else if (t.dataset.acao === "banner-selecionar-todos") {
+        bannerEstado.selecionados = new Set(jogosVisiveisBanner().map(({ i }) => i));
+        atualizarSubtituloAutomaticoBanner();
+        renderListaJogosBanner();
+        atualizarPreviewBanner();
+      }
+      else if (t.dataset.acao === "banner-limpar-selecao") {
+        bannerEstado.selecionados.clear();
+        atualizarSubtituloAutomaticoBanner();
+        renderListaJogosBanner();
+        atualizarPreviewBanner();
+      }
+      else if (t.dataset.acao === "banner-remover-fundo") removerFundoPersonalizadoBanner();
+      else if (t.dataset.acao === "banner-atualizar") {
+        bannerEstado.titulo = document.getElementById("banner-titulo").value;
+        bannerEstado.subtitulo = document.getElementById("banner-subtitulo").value;
+        atualizarPreviewAgoraBanner();
+      }
+      else if (t.dataset.acao === "banner-baixar") baixarBanner();
+      else if (t.dataset.acao === "banner-compartilhar") compartilharBanner();
       else if (t.dataset.editarJogo != null) formJogo(Number(t.dataset.editarJogo));
       else if (t.dataset.excluirJogo != null) excluirJogo(Number(t.dataset.excluirJogo));
       else if (t.dataset.editarTime != null) formTime(Number(t.dataset.editarTime));
       else if (t.dataset.excluirTime != null) excluirTime(Number(t.dataset.excluirTime));
     });
+
+    window.addEventListener("resize", ajustarEscalaPreviewBanner);
 
     document.addEventListener("keydown", (e) => {
       if (e.key === "Escape") fecharGerenciador();

@@ -16,7 +16,9 @@ Site estático (HTML/CSS/JS puro, sem framework, sem build step) do
 grupos, jogos/resultados, ranking de artilheiros e lista de times. Tem um
 painel **"Gerenciar"** (protegido por senha) onde os organizadores cadastram
 jogos, placares, times e escudos — tudo isso salva na nuvem (Firebase) e
-atualiza **em tempo real** para todo mundo que estiver com o site aberto.
+atualiza **em tempo real** para todo mundo que estiver com o site aberto. O
+painel também tem um gerador local de banners; essa ferramenta não grava
+nada no Firebase.
 
 - **Site em produção (usuários reais, dono é cliente "Speedline"):**
   https://campeonato.speedlinemg.com.br
@@ -63,13 +65,31 @@ conta por baixo dos panos. A senha real fica só no Firebase Console
 do próprio documento do Firestore** — não usa Firebase Storage porque agora
 exige plano pago; ver `processarImagemEscudo` em app.js).
 
+**Gerador de banners:** usa `html2canvas@1.4.1` minificado e fixado via
+jsDelivr no `index.html`. O template de captura usa dimensões nativas fixas
+de 1080×1920 (Story) ou 1080×1080 (Feed), com `scale: 1` e `useCORS: true`.
+A prévia exibe o próprio canvas nativo redimensionado apenas visualmente, e o
+download reutiliza esse mesmo canvas; assim, prévia e PNG possuem exatamente
+os mesmos pixels. Escudos/logos usam caminhos locais ou data URI; o fundo
+enviado pelo usuário é processado localmente e limitado a 12 MB. O estado do
+editor existe apenas em memória e nunca entra em `STATE`.
+O visual padrão segue o modelo de referência aprovado pelo cliente: fundo
+de estádio noturno com holofotes, pincelada branca sob o logo, título em
+duas linhas, data em box lateral, cards escuros com `VS`/placar e tags de
+data/hora, frase com bolas e faixa branca institucional no rodapé. A
+moldura fica isolada em `assets/css/banner-modelo.css`; fundos, bola e
+marcas institucionais ficam em `assets/img/banners/`.
+
 **Versionamento de cache:** todo CSS/JS é servido com `?v=N` no
 `index.html`, e existe `const CACHE_VER = "N"` em `app.js` (usado só pra
 imagens/logo, `comVersao()`). **⚠️ REGRA IMPORTANTE:** sempre que qualquer
 CSS ou JS mudar, incremente **TODOS** os `?v=` do `index.html` (dados.js,
-db.js, app.js, estilo.css) e o `CACHE_VER` do app.js, para o mesmo número
-novo. Já tivemos um bug real de produção por esquecer disso (cache
+db.js, app.js, estilo.css e banner-modelo.css) e o `CACHE_VER` do app.js,
+para o mesmo número novo. Já tivemos um bug real de produção por esquecer
+disso (cache
 misturando JS antigo com HTML novo). Valor atual em produção: **v=27**.
+A branch `feat/gerador-banners` está em **v=39** enquanto aguarda validação
+do cliente e eventual deploy.
 
 ## 3. Como o deploy funciona (IMPORTANTE)
 
@@ -191,8 +211,9 @@ logo do rodapé, arquivos de preview soltos na raiz).
 
 ## 7. TAREFA EM ANDAMENTO AGORA — 3 ajustes visuais pedidos pelo cliente
 
-Branch já criada: **`feat/ajustes-visuais`** (a partir de `main`, que já
-tem o Artilheiros publicado). Segue o mesmo processo do §4.
+Itens 1 e 3 vieram da branch `feat/ajustes-visuais` e já estão em produção.
+O item 2 está sendo desenvolvido separadamente na branch
+**`feat/gerador-banners`**, criada a partir da `main` em v=27.
 
 Pedidos (nas palavras do cliente):
 
@@ -203,22 +224,35 @@ Pedidos (nas palavras do cliente):
    saldo na vaga de corte, o desempate hoje é a ordem dos grupos (A, B, C).
    Vale confirmar com o cliente se o regulamento tem um terceiro critério
    oficial (ex.: gols pró, confronto direto). Não bloqueia nada hoje.
-2. ⏳ **"Criar um gerador de banner"** — **PENDENTE, é a próxima tarefa.**
-   O cliente disse que ia pedir ao Codex para implementar. Ainda sem
-   detalhes definidos (banner de quê? resultado de jogo pra compartilhar?
-   divulgação da rodada? formato de imagem pra baixar/mandar no WhatsApp?).
-   Se for implementar: provavelmente gerar a imagem no navegador via
-   `<canvas>` (o projeto já usa canvas em `processarImagemEscudo`) e
-   oferecer download/compartilhamento. **Confirmar o escopo com o cliente
-   antes de codar.**
+2. 🧪 **"Criar um gerador de banner"** — **IMPLEMENTADO E TESTADO
+   LOCALMENTE, ainda NÃO publicado.** Nova sub-aba `Gerar Banner` no
+   Gerenciador com:
+   - Próximos jogos ou resultados; Story 9:16 ou Feed 1:1.
+   - Filtros combinados por grupo/rodada e time, com seleção múltipla de jogos.
+   - Título/subtítulo editáveis, três fundos da identidade e upload local.
+   - Template fiel ao modelo oficial: estádio/holofotes, logo sobre
+     pincelada, título em duas linhas, data lateral e cards escuros.
+   - Escudos, `VS` ou placar, tags de data/hora, frase com bolas e rodapé
+     branco com Diretoria de Esportes, Prefeitura e Speedline.
+   - Download PNG via `html2canvas` em 1080×1920/1080×1080 e
+     compartilhamento via `navigator.share`; se indisponível, baixa o PNG.
+   - Nenhuma configuração/imagem é salva no Firestore.
+   Arquivos alterados: `index.html`, `assets/js/app.js`,
+   `assets/css/estilo.css`, `assets/css/banner-modelo.css`,
+   `assets/img/banners/*`, `LEIA-ME.md` e este `CONTEXTO.md`.
 3. ✅ **"Colocar logo no ícone da aba do navegador"** (favicon) —
    **CONCLUÍDO E EM PRODUÇÃO** (detalhes no §5).
 
 ### Status: itens 1 e 3 auditados, mesclados na `main` e publicados em
 produção em 29/07/2026 (v=27), com backups do banco e do código em
 `backups/` e tag de rollback `pre-ajustes-visuais-20260729-144645`.
-Banco verificado intacto depois do deploy (17 jogos, 13 times, 16 gols).
-Falta apenas o item 2 (gerador de banner).
+O item 2 está em `v=39` e passou localmente por Chrome headless em
+320/768/1280 px, sem
+overflow ou erros JS, sem acesso ao Firebase, com imagens válidas e dois
+PNGs reais: Story 1080×1920 (~2,2 MB) e Feed 1080×1080 (~1,1 MB). Upload
+personalizado e compartilhamento de arquivo também foram validados. Falta a
+aprovação visual do cliente; nada da branch `feat/gerador-banners` foi
+publicado.
 
 ## 8. Como testar (lembrete rápido)
 
