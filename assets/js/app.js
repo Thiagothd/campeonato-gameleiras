@@ -10,7 +10,7 @@
   "use strict";
 
   const IMG_TIMES = "assets/img/times/";
-  const CACHE_VER = "39"; // troque quando atualizar imagens/CSS/JS (força o navegador a rebaixar)
+  const CACHE_VER = "40"; // troque quando atualizar imagens/CSS/JS (força o navegador a rebaixar)
 
   function comVersao(base) {
     if (!base) return "";
@@ -35,7 +35,9 @@
     jogos:  JSON.parse(JSON.stringify(JOGOS)),
   };
 
-  let STATE = JSON.parse(JSON.stringify(PUBLICADO));
+  // O estado inicial (dados de fallback) também passa pela migração, para a
+  // tela já nascer com os elencos completos mesmo antes da nuvem responder.
+  let STATE = aplicarMigracaoJogadores(JSON.parse(JSON.stringify(PUBLICADO)));
   let CLOUD_STATE = null;
   let bancoVazio = false;
   let logado = false;
@@ -43,12 +45,121 @@
   let statusNuvem = "conectando"; // conectando | ao-vivo | erro | vazio
 
   function normalizarNuvem(dados) {
-    return {
+    return aplicarMigracaoJogadores({
       config: Object.assign({}, PUBLICADO.config, dados.config || {}),
       grupos: (dados.grupos && dados.grupos.length) ? dados.grupos : PUBLICADO.grupos,
       times:  dados.times || PUBLICADO.times,
       jogos:  dados.jogos || PUBLICADO.jogos,
-    };
+    });
+  }
+
+  /* =======================================================================
+     JOGADORES — estrutura unificada e migração automática (backfill)
+     -------------------------------------------------------------------------
+     Cada time guarda `jogadores: [{ id, nome }]`.
+
+     Compatibilidade: versões antigas salvavam o elenco como lista de nomes
+     (["DUDA"]) e os gols sempre referenciaram o jogador pelo NOME + time.
+     Por isso a leitura aceita os dois formatos e o vínculo entre gol e
+     jogador continua sendo (time + nome), comparado sem diferenciar
+     maiúsculas/minúsculas.
+
+     A migração roda ao carregar o STATE, é IDEMPOTENTE (rodar de novo não
+     muda nada) e só ACRESCENTA — nunca remove nem renomeia o que já existe.
+     Ela acontece em memória; é gravada na nuvem naturalmente no próximo
+     salvamento feito por um administrador (nenhum visitante escreve no banco).
+     ======================================================================= */
+  function nomeJogadorLimpo(nome) {
+    return String(nome == null ? "" : nome).trim();
+  }
+
+  function chaveJogador(nome) {
+    return nomeJogadorLimpo(nome).toLowerCase();
+  }
+
+  function gerarIdJogador(nome, idsUsados) {
+    const base = slug(nome) || "jogador";
+    let id = base, n = 2;
+    while (idsUsados.has(id)) { id = base + "-" + n; n++; }
+    idsUsados.add(id);
+    return id;
+  }
+
+  /** Converte um elenco de qualquer formato antigo para [{id, nome}], sem duplicar. */
+  function normalizarElenco(jogadores) {
+    const lista = Array.isArray(jogadores) ? jogadores : [];
+    const vistos = new Set(), ids = new Set(), saida = [];
+    lista.forEach((j) => {
+      const nome = nomeJogadorLimpo(typeof j === "string" ? j : (j && j.nome));
+      if (!nome) return;
+      const chave = chaveJogador(nome);
+      if (vistos.has(chave)) return;   // já existe (ignora diferença de caixa)
+      vistos.add(chave);
+      const idExistente = (j && typeof j === "object" && j.id) ? String(j.id) : "";
+      const id = (idExistente && !ids.has(idExistente))
+        ? (ids.add(idExistente), idExistente)
+        : gerarIdJogador(nome, ids);
+      saida.push({ id, nome });
+    });
+    return saida;
+  }
+
+  /**
+   * Backfill: garante que todo jogador que aparece nas súmulas (gols) exista
+   * no elenco do seu time. Devolve um estado novo (não altera o recebido).
+   */
+  function aplicarMigracaoJogadores(estado) {
+    const times = (estado.times || []).map((t) => Object.assign({}, t, {
+      jogadores: normalizarElenco(t.jogadores),
+    }));
+    const porIdTime = Object.fromEntries(times.map((t) => [t.id, t]));
+
+    (estado.jogos || []).forEach((j) => {
+      (j.gols || []).forEach((g) => {
+        const nome = nomeJogadorLimpo(g && g.jogador);
+        const time = porIdTime[g && g.time];
+        if (!nome || !time) return;
+        const chave = chaveJogador(nome);
+        if (time.jogadores.some((p) => chaveJogador(p.nome) === chave)) return;
+        const ids = new Set(time.jogadores.map((p) => p.id));
+        time.jogadores.push({ id: gerarIdJogador(nome, ids), nome });
+      });
+    });
+
+    return Object.assign({}, estado, { times });
+  }
+
+  /** Elenco de um time, já normalizado. */
+  function elencoDoTime(idTime) {
+    const t = porId()[idTime];
+    return (t && Array.isArray(t.jogadores)) ? t.jogadores : [];
+  }
+
+  /**
+   * Garante que os jogadores citados nos gols existam nos elencos dos times.
+   * Usado ao salvar um jogo: nome digitado que não está no elenco é criado.
+   * Devolve quantos jogadores novos foram criados.
+   */
+  function garantirJogadoresDosGols(gols) {
+    let criados = 0;
+    const times = STATE.times.map((t) => Object.assign({}, t, {
+      jogadores: normalizarElenco(t.jogadores),
+    }));
+    const porIdTime = Object.fromEntries(times.map((t) => [t.id, t]));
+
+    (gols || []).forEach((g) => {
+      const nome = nomeJogadorLimpo(g.jogador);
+      const time = porIdTime[g.time];
+      if (!nome || !time) return;
+      const chave = chaveJogador(nome);
+      if (time.jogadores.some((p) => chaveJogador(p.nome) === chave)) return;
+      const ids = new Set(time.jogadores.map((p) => p.id));
+      time.jogadores.push({ id: gerarIdJogador(nome, ids), nome });
+      criados++;
+    });
+
+    if (criados) STATE.times = times;
+    return criados;
   }
 
   /* =======================================================================
@@ -338,17 +449,33 @@
      ======================================================================= */
   let filtroArtGrupo = "todos";
 
+  /**
+   * Ranking de artilheiros — 100% derivado das súmulas (gols dos jogos).
+   * O vínculo com o elenco é feito por (time + nome), sem diferenciar
+   * maiúsculas/minúsculas, então "PEDRO" e "Pedro" do mesmo time somam
+   * juntos; xarás de times diferentes continuam separados.
+   */
   function calcularArtilheiros() {
     const idx = porId();
-    const mapa = {}; // chave: time + "::" + nome (minúsculo) — separa xarás de times diferentes
+    const mapa = {}; // chave: time + "::" + nome (minúsculo)
     STATE.jogos.forEach((j) => {
       (j.gols || []).forEach((g) => {
-        const nome = (g.jogador || "").trim();
+        const nome = nomeJogadorLimpo(g.jogador);
         const qtd = Number(g.gols) || 0;
         if (!nome || qtd <= 0) return;
         const time = g.time || "";
-        const chave = time + "::" + nome.toLowerCase();
-        if (!mapa[chave]) mapa[chave] = { jogador: nome, time, grupo: (idx[time] && idx[time].grupo) || "", gols: 0 };
+        const chave = time + "::" + chaveJogador(nome);
+        if (!mapa[chave]) {
+          // nome exibido: o cadastrado no elenco (se houver), senão o da súmula
+          const noElenco = elencoDoTime(time).find((p) => chaveJogador(p.nome) === chaveJogador(nome));
+          mapa[chave] = {
+            jogadorId: noElenco ? noElenco.id : "",
+            jogador: noElenco ? noElenco.nome : nome,
+            time,
+            grupo: (idx[time] && idx[time].grupo) || "",
+            gols: 0,
+          };
+        }
         mapa[chave].gols += qtd;
       });
     });
@@ -1445,7 +1572,7 @@
       <div class="campo"><label>Local</label><input type="text" id="fj-local" value="${escapeHtml(val(j.local))}" placeholder="Arena Jatobá"></div>
       <div class="campo campo--gols">
         <label>Quem fez os gols <small>(opcional — alimenta os Artilheiros)</small></label>
-        <datalist id="fj-datalist-jogadores"></datalist>
+        <div id="fj-datalists" hidden></div>
         <div id="fj-gols-lista" class="gols-lista"></div>
         <button type="button" class="btn-mini" id="fj-add-gol">+ Adicionar gol</button>
       </div>
@@ -1472,22 +1599,26 @@
   /* ---------- Sub-formulário: gols marcados no jogo ---------- */
   let golsForm = [];
 
-  function jogadoresDosTimes(idMandante, idVisitante) {
-    const idx = porId();
-    const nomes = [];
-    [idMandante, idVisitante].forEach((id) => {
-      const t = idx[id];
-      if (t && Array.isArray(t.jogadores)) t.jogadores.forEach((n) => { if (n && !nomes.includes(n)) nomes.push(n); });
-    });
-    return nomes;
+  /** id do <datalist> de sugestões de um time (um por time do confronto). */
+  function idDatalistDoTime(idTime) {
+    return "fj-dl-" + slug(idTime || "sem-time");
   }
 
+  /**
+   * Cria um <datalist> por time do confronto, cada um só com os jogadores
+   * DAQUELE time — assim a sugestão nunca mistura o elenco dos dois lados.
+   */
   function atualizarDatalistJogadores() {
-    const dl = document.getElementById("fj-datalist-jogadores");
-    if (!dl) return;
+    const cont = document.getElementById("fj-datalists");
+    if (!cont) return;
     const m = document.getElementById("fj-mandante").value;
     const v = document.getElementById("fj-visitante").value;
-    dl.innerHTML = jogadoresDosTimes(m, v).map((n) => `<option value="${escapeHtml(n)}"></option>`).join("");
+    const times = [m, v].filter((x, i, a) => x && a.indexOf(x) === i);
+    cont.innerHTML = times.map((idTime) => {
+      const opcoes = elencoDoTime(idTime)
+        .map((p) => `<option value="${escapeHtml(p.nome)}"></option>`).join("");
+      return `<datalist id="${idDatalistDoTime(idTime)}">${opcoes}</datalist>`;
+    }).join("");
   }
 
   function opcoesTimesDoJogo(sel) {
@@ -1503,11 +1634,16 @@
     cont.innerHTML = golsForm.map((g, i) => `
       <div class="gol-row">
         <select class="gol-time" data-i="${i}">${opcoesTimesDoJogo(g.time)}</select>
-        <input type="text" class="gol-jogador" data-i="${i}" list="fj-datalist-jogadores" value="${escapeHtml(g.jogador || "")}" placeholder="Jogador" autocomplete="off">
+        <input type="text" class="gol-jogador" data-i="${i}" list="${idDatalistDoTime(g.time)}" value="${escapeHtml(g.jogador || "")}" placeholder="Jogador" autocomplete="off">
         <input type="number" min="1" class="gol-qtd" data-i="${i}" value="${g.gols || 1}" aria-label="Gols">
         <button type="button" class="btn-mini btn-mini--del gol-remover" data-i="${i}" aria-label="Remover">✕</button>
       </div>`).join("");
-    cont.querySelectorAll(".gol-time").forEach((el) => el.onchange = () => { golsForm[Number(el.dataset.i)].time = el.value; });
+    // ao trocar o time da linha, o autocomplete precisa passar a sugerir o
+    // elenco do time novo — por isso a linha é redesenhada
+    cont.querySelectorAll(".gol-time").forEach((el) => el.onchange = () => {
+      golsForm[Number(el.dataset.i)].time = el.value;
+      renderGolsForm();
+    });
     cont.querySelectorAll(".gol-jogador").forEach((el) => el.oninput = () => { golsForm[Number(el.dataset.i)].jogador = el.value; });
     cont.querySelectorAll(".gol-qtd").forEach((el) => el.oninput = () => { golsForm[Number(el.dataset.i)].gols = Number(el.value) || 0; });
     cont.querySelectorAll(".gol-remover").forEach((el) => el.onclick = () => { golsForm.splice(Number(el.dataset.i), 1); renderGolsForm(); });
@@ -1563,9 +1699,13 @@
     };
 
     const gols = golsForm
-      .map((g) => ({ time: g.time, jogador: (g.jogador || "").trim(), gols: Number(g.gols) || 0 }))
+      .map((g) => ({ time: g.time, jogador: nomeJogadorLimpo(g.jogador), gols: Number(g.gols) || 0 }))
       .filter((g) => g.time && g.jogador && g.gols > 0);
     if (gols.length) jogo.gols = gols;
+
+    // Nome digitado que ainda não existe no elenco do time vira jogador novo
+    // automaticamente — assim ele já aparece no autocomplete na próxima vez.
+    const novosJogadores = garantirJogadoresDosGols(gols);
 
     STATE.jogos = STATE.jogos.slice();
     if (idxRaw === "") STATE.jogos.push(jogo);
@@ -1573,6 +1713,12 @@
 
     const ok = await salvarNuvem(document.getElementById("fj-salvar"));
     if (!ok) return;
+
+    if (novosJogadores) {
+      alert(novosJogadores === 1
+        ? "1 jogador novo foi adicionado ao elenco do time."
+        : novosJogadores + " jogadores novos foram adicionados aos elencos dos times.");
+    }
 
     fecharFormJogo();
     renderTudo();
@@ -1616,7 +1762,7 @@
 
   function formTime(idx) {
     const t = idx != null ? STATE.times[idx] : { id: "", nome: "", grupo: STATE.grupos[0] && STATE.grupos[0].id, escudo: "" };
-    elencoForm = Array.isArray(t.jogadores) ? t.jogadores.slice() : [];
+    elencoForm = normalizarElenco(t.jogadores);
     const previewSrc = srcEscudo(t.escudo);
     document.getElementById("ger-form-time").innerHTML = `
       <h4 class="ger-form-tit">${idx != null ? "Editar time" : "Novo time"}</h4>
@@ -1668,22 +1814,49 @@
   function renderElencoChips() {
     const cont = document.getElementById("ft-elenco");
     if (!cont) return;
+    const golsPorJogador = golsDoElencoAtual();
     cont.innerHTML = elencoForm.length
-      ? elencoForm.map((nome, i) =>
-          `<span class="elenco-chip">${escapeHtml(nome)}<button type="button" data-remover-jogador="${i}" aria-label="Remover">✕</button></span>`).join("")
+      ? elencoForm.map((p, i) => {
+          const gols = golsPorJogador[chaveJogador(p.nome)] || 0;
+          // Quem já marcou gol não pode sair do elenco sem antes perder o vínculo
+          // com a súmula — senão o artilheiro ficaria "solto".
+          const selo = gols ? `<i class="elenco-gols" title="${gols} gol(s) na súmula">${gols}</i>` : "";
+          const remover = gols
+            ? `<button type="button" class="elenco-travado" data-jogador-com-gol="${gols}" aria-label="Não pode remover">🔒</button>`
+            : `<button type="button" data-remover-jogador="${i}" aria-label="Remover">✕</button>`;
+          return `<span class="elenco-chip">${escapeHtml(p.nome)}${selo}${remover}</span>`;
+        }).join("")
       : '<span class="elenco-vazio">Nenhum jogador cadastrado.</span>';
+
     cont.querySelectorAll("[data-remover-jogador]").forEach((b) =>
       b.onclick = () => { elencoForm.splice(Number(b.dataset.removerJogador), 1); renderElencoChips(); });
+    cont.querySelectorAll("[data-jogador-com-gol]").forEach((b) =>
+      b.onclick = () => alert("Esse jogador tem " + b.dataset.jogadorComGol +
+        " gol(s) registrado(s) nos jogos. Remova os gols dele nas súmulas antes de tirá-lo do elenco."));
+  }
+
+  /** Quantos gols cada jogador do time em edição tem nas súmulas. */
+  function golsDoElencoAtual() {
+    const idTime = (document.getElementById("ft-id") || {}).value || "";
+    const mapa = {};
+    if (!idTime) return mapa;
+    STATE.jogos.forEach((j) => (j.gols || []).forEach((g) => {
+      if (g.time !== idTime) return;
+      const k = chaveJogador(g.jogador);
+      if (k) mapa[k] = (mapa[k] || 0) + (Number(g.gols) || 0);
+    }));
+    return mapa;
   }
 
   function adicionarJogadorElenco() {
     const inp = document.getElementById("ft-jogador");
-    const nome = inp.value.trim();
+    const nome = nomeJogadorLimpo(inp.value);
     if (!nome) return;
-    if (elencoForm.some((n) => n.toLowerCase() === nome.toLowerCase())) {
+    if (elencoForm.some((p) => chaveJogador(p.nome) === chaveJogador(nome))) {
       alert("Esse jogador já está no elenco.");
     } else {
-      elencoForm.push(nome);
+      const ids = new Set(elencoForm.map((p) => p.id));
+      elencoForm.push({ id: gerarIdJogador(nome, ids), nome });
       renderElencoChips();
     }
     inp.value = "";
