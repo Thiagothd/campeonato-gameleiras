@@ -30,6 +30,12 @@ function Get-RequiredEnv {
 
 $ApiToken = Get-RequiredEnv "CLOUDFLARE_API_TOKEN"
 $AccountId = Get-RequiredEnv "CLOUDFLARE_ACCOUNT_ID"
+
+# O wrangler roda como processo FILHO e le a credencial do ambiente. Se ela
+# veio das variaveis persistentes (User/Machine), ainda nao esta no ambiente
+# deste processo — entao publicamos aqui para o filho herdar.
+$env:CLOUDFLARE_API_TOKEN = $ApiToken
+$env:CLOUDFLARE_ACCOUNT_ID = $AccountId
 $ApiBase = "https://api.cloudflare.com/client/v4"
 $Headers = @{
   "Authorization" = "Bearer $ApiToken"

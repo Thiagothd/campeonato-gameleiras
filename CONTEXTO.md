@@ -146,6 +146,31 @@ necessidade estrita.
 
 ## 5. Estado atual (últimas entregas concluídas e publicadas)
 
+**Jogadores unificados com a súmula — CONCLUÍDO e EM PRODUÇÃO** (deploy em
+04/08/2026, v=40, verificado ponta a ponta):
+- **Estrutura**: cada time guarda `jogadores: [{ id, nome }]`. O vínculo
+  entre gol e jogador continua sendo **(time + nome)**, comparado sem
+  diferenciar maiúsculas/minúsculas. Foi decisão consciente NÃO trocar a
+  referência dos gols para id — assim nenhuma súmula precisou ser reescrita
+  e o risco de perder dado caiu a zero.
+- **Migração automática (backfill)** — `aplicarMigracaoJogadores()`, chamada
+  em `normalizarNuvem()` e no STATE inicial: converte elencos antigos (lista
+  de nomes) para `[{id, nome}]` e adiciona aos elencos todo jogador que já
+  tinha gol em súmula. É **idempotente** e só ACRESCENTA. Roda **em memória**
+  e não grava sozinha na nuvem (visitante não escreve no banco) — persiste
+  no próximo salvamento de um admin. Nos dados reais: 1 → 39 jogadores.
+- **Súmula**: autocomplete agora é **por time** (`idDatalistDoTime`, um
+  `<datalist>` por time do confronto) — não mistura mais os dois elencos.
+  Nome digitado que não existe é aceito e o jogador é criado automaticamente
+  ao salvar (`garantirJogadoresDosGols`), com aviso ao usuário.
+- **Times**: o elenco mostra o total de gols de cada jogador e **bloqueia a
+  remoção** de quem tem gol registrado (evita artilheiro órfão).
+- Validado com 18 testes de lógica sobre dados REAIS (zero perda, 54 gols
+  byte a byte, ranking idêntico, idempotência em 3 execuções, "PEDRO"/"Pedro"
+  unificados, xarás de times diferentes separados, casos de borda) + teste
+  ponta a ponta simulando usuário real (cliques e digitação reais, login
+  validado, persistência após recarregar): 18/18, zero erros de JS.
+
 **Gerador de banners — CONCLUÍDO e EM PRODUÇÃO** (deploy em 04/08/2026,
 v=39, verificado ponta a ponta):
 - Aba "Gerar Banner" no Gerenciador: monta artes 1080×1920 (Story) ou
