@@ -20,6 +20,7 @@ deploy-cloudflare-pages.ps1
 firebase.json
 firestore.rules
 LEIA-ME.md
+CONTEXTO.md
 campeonato-teste.html
 
 assets/img/Esporte/
