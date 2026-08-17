@@ -10,7 +10,7 @@
   "use strict";
 
   const IMG_TIMES = "assets/img/times/";
-  const CACHE_VER = "40"; // troque quando atualizar imagens/CSS/JS (força o navegador a rebaixar)
+  const CACHE_VER = "41"; // troque quando atualizar imagens/CSS/JS (força o navegador a rebaixar)
 
   function comVersao(base) {
     if (!base) return "";
@@ -178,6 +178,73 @@
     return (idx[j.mandante] && idx[j.mandante].grupo) || "";
   }
 
+  /* =======================================================================
+     FASES DO CAMPEONATO
+     -------------------------------------------------------------------------
+     Jogos antigos não têm o campo `fase` — por compatibilidade, tudo que não
+     estiver marcado é tratado como "grupos". Só os jogos de mata-mata contam
+     para o chaveamento, e só os de grupos entram na tabela de classificação.
+     ======================================================================= */
+  const FASES_MATA_MATA = [
+    { id: "quartas",   nome: "Quartas de Final", curto: "Quartas", jogos: 4 },
+    { id: "semifinal", nome: "Semifinal",        curto: "Semi",    jogos: 2 },
+    { id: "final",     nome: "Final",            curto: "Final",   jogos: 1 },
+  ];
+  const IDS_MATA_MATA = FASES_MATA_MATA.map((f) => f.id);
+
+  /** Fase de um jogo; ausente/desconhecida = "grupos" (retrocompatível). */
+  function faseDoJogo(j) {
+    const f = j && j.fase ? String(j.fase) : "";
+    return IDS_MATA_MATA.indexOf(f) !== -1 ? f : "grupos";
+  }
+
+  function ehMataMata(j) {
+    return faseDoJogo(j) !== "grupos";
+  }
+
+  function nomeDaFase(idFase) {
+    const f = FASES_MATA_MATA.find((x) => x.id === idFase);
+    return f ? f.nome : "Fase de Grupos";
+  }
+
+  /** Jogos que valem para a tabela de classificação (só fase de grupos). */
+  function jogosDeGrupos() {
+    return STATE.jogos.filter((j) => !ehMataMata(j));
+  }
+
+  function jogosDaFase(idFase) {
+    return STATE.jogos.filter((j) => faseDoJogo(j) === idFase);
+  }
+
+  function temMataMata() {
+    return STATE.jogos.some(ehMataMata);
+  }
+
+  /** Pênaltis registrados e válidos (só fazem sentido no mata-mata empatado). */
+  function temPenaltis(j) {
+    const a = Number(j && j.penaltisTimeA), b = Number(j && j.penaltisTimeB);
+    return j && j.penaltisTimeA !== null && j.penaltisTimeA !== undefined && j.penaltisTimeA !== "" &&
+           j.penaltisTimeB !== null && j.penaltisTimeB !== undefined && j.penaltisTimeB !== "" &&
+           !isNaN(a) && !isNaN(b);
+  }
+
+  /**
+   * Quem venceu um jogo de mata-mata: pelo placar, ou pelos pênaltis se
+   * empatou. Devolve o id do time ou "" se ainda não há definição.
+   */
+  function vencedorDoJogo(j) {
+    if (!j || !jogoRealizado(j)) return "";
+    const gm = Number(j.golsMandante), gv = Number(j.golsVisitante);
+    if (gm > gv) return j.mandante;
+    if (gv > gm) return j.visitante;
+    if (temPenaltis(j)) {
+      const pa = Number(j.penaltisTimeA), pb = Number(j.penaltisTimeB);
+      if (pa > pb) return j.mandante;
+      if (pb > pa) return j.visitante;
+    }
+    return ""; // empate sem pênaltis definidos
+  }
+
   function nomeTime(id) {
     const t = porId()[id];
     return t ? t.nome : id;
@@ -233,7 +300,9 @@
         pts: 0, j: 0, v: 0, e: 0, d: 0, gp: 0, gc: 0, sg: 0, forma: [] };
     });
 
-    STATE.jogos.filter(jogoRealizado).forEach((j) => {
+    // Só a FASE DE GRUPOS entra na tabela — resultados de mata-mata não
+    // alteram a classificação (senão a fase de grupos ficaria corrompida).
+    jogosDeGrupos().filter(jogoRealizado).forEach((j) => {
       const m = tab[j.mandante], v = tab[j.visitante];
       if (!m || !v) return; // não é jogo deste grupo
       const gm = Number(j.golsMandante), gv = Number(j.golsVisitante);
@@ -260,14 +329,40 @@
     return lista;
   }
 
-  function calcularMelhoresTerceiros(classificacoes) {
-    const terceiros = STATE.grupos.map((grupo) => {
+  /**
+   * Terceiros colocados ordenados pelo critério oficial:
+   * pontos → saldo de gols → gols pró.
+   */
+  function terceirosOrdenados(classificacoes) {
+    return STATE.grupos.map((grupo) => {
       const terceiro = classificacoes[grupo.id] && classificacoes[grupo.id][2];
-      return terceiro ? { id: terceiro.id, pts: terceiro.pts, sg: terceiro.sg } : null;
-    }).filter(Boolean);
+      return terceiro ? Object.assign({ grupo: grupo.id }, terceiro) : null;
+    }).filter(Boolean)
+      .sort((a, b) => b.pts - a.pts || b.sg - a.sg || b.gp - a.gp);
+  }
 
-    terceiros.sort((a, b) => b.pts - a.pts || b.sg - a.sg);
-    return new Set(terceiros.slice(0, 2).map((time) => time.id));
+  function calcularMelhoresTerceiros(classificacoes) {
+    return new Set(terceirosOrdenados(classificacoes).slice(0, 2).map((t) => t.id));
+  }
+
+  /**
+   * Os 8 classificados para o mata-mata: 1º e 2º de cada grupo + os 2
+   * melhores 3º colocados gerais. Cada item traz a "vaga" (1A, 2B, 3M1…)
+   * para o chaveamento poder mostrar de onde o time veio.
+   */
+  function calcularClassificados() {
+    const classificacoes = Object.fromEntries(
+      STATE.grupos.map((g) => [g.id, calcularGrupo(g.id)])
+    );
+    const primeiros = [], segundos = [];
+    STATE.grupos.forEach((g) => {
+      const lista = classificacoes[g.id] || [];
+      if (lista[0]) primeiros.push({ vaga: "1" + g.id, grupo: g.id, posicao: 1, time: lista[0] });
+      if (lista[1]) segundos.push({ vaga: "2" + g.id, grupo: g.id, posicao: 2, time: lista[1] });
+    });
+    const melhores = terceirosOrdenados(classificacoes).slice(0, 2)
+      .map((t, i) => ({ vaga: "3M" + (i + 1), grupo: t.grupo, posicao: 3, time: t }));
+    return primeiros.concat(segundos, melhores);
   }
 
   function tabelaGrupoHTML(grupo, lista, melhoresTerceiros) {
@@ -341,6 +436,121 @@
     ).join("");
     document.getElementById("grupos-container").innerHTML =
       html || '<p class="vazio">Nenhum grupo cadastrado ainda.</p>';
+    renderMataMata();
+    aplicarVistaFase();
+  }
+
+  /* =======================================================================
+     MATA-MATA — chaveamento (bracket) na aba pública
+     ======================================================================= */
+  let vistaFase = "grupos"; // grupos | mata-mata
+
+  function aplicarVistaFase() {
+    document.querySelectorAll(".fase-btn").forEach((b) => {
+      const ativo = b.dataset.faseVista === vistaFase;
+      b.classList.toggle("ativo", ativo);
+      b.setAttribute("aria-selected", ativo ? "true" : "false");
+    });
+    const g = document.getElementById("vista-grupos");
+    const m = document.getElementById("vista-mata-mata");
+    if (g) g.hidden = vistaFase !== "grupos";
+    if (m) m.hidden = vistaFase !== "mata-mata";
+  }
+
+  /** Um confronto do chaveamento (com placar/pênaltis se já aconteceu). */
+  function confrontoHTML(jogo, rotuloVazio) {
+    if (!jogo) {
+      return `<div class="mm-jogo mm-jogo--vazio">
+          <div class="mm-lado"><span class="mm-nome">${escapeHtml(rotuloVazio || "A definir")}</span></div>
+          <div class="mm-lado"><span class="mm-nome">${escapeHtml(rotuloVazio || "A definir")}</span></div>
+        </div>`;
+    }
+    const idx = porId();
+    const feito = jogoRealizado(jogo);
+    const venc = vencedorDoJogo(jogo);
+    const pen = temPenaltis(jogo);
+
+    const lado = (idTime, gols, penal) => {
+      const t = idx[idTime];
+      const venceu = venc && venc === idTime;
+      const perdeu = venc && venc !== idTime;
+      return `<div class="mm-lado ${venceu ? "mm-lado--vence" : ""} ${perdeu ? "mm-lado--perde" : ""}">
+          ${escudoHTML(t, "sm")}
+          <span class="mm-nome">${escapeHtml(nomeTime(idTime))}</span>
+          <span class="mm-placar">${feito ? gols : "–"}${pen ? `<i class="mm-pen">(${penal})</i>` : ""}</span>
+        </div>`;
+    };
+
+    const meta = [];
+    if (jogo.data) meta.push(formatarData(jogo.data));
+    if (jogo.hora) meta.push(jogo.hora);
+    const empateSemPen = feito && !venc;
+
+    return `<div class="mm-jogo ${feito ? "mm-jogo--fim" : ""}">
+        ${lado(jogo.mandante, jogo.golsMandante, jogo.penaltisTimeA)}
+        ${lado(jogo.visitante, jogo.golsVisitante, jogo.penaltisTimeB)}
+        ${meta.length ? `<div class="mm-meta">${escapeHtml(meta.join(" · "))}</div>` : ""}
+        ${empateSemPen ? '<div class="mm-aviso">Empate — registre os pênaltis</div>' : ""}
+      </div>`;
+  }
+
+  function renderMataMata() {
+    const cont = document.getElementById("bracket-container");
+    if (!cont) return;
+
+    const colunas = FASES_MATA_MATA.map((fase) => {
+      const jogos = jogosDaFase(fase.id);
+      // mostra as vagas previstas da fase, mesmo que o jogo ainda não exista
+      const celulas = [];
+      for (let i = 0; i < fase.jogos; i++) {
+        celulas.push(confrontoHTML(jogos[i], "A definir"));
+      }
+      return `<div class="bracket-col bracket-col--${fase.id}">
+          <h3 class="bracket-fase">${escapeHtml(fase.nome)}</h3>
+          <div class="bracket-jogos">${celulas.join("")}</div>
+        </div>`;
+    }).join("");
+
+    cont.innerHTML = colunas;
+    renderClassificados();
+    renderCampeao();
+  }
+
+  /** Lista os 8 classificados (com a vaga de origem). */
+  function renderClassificados() {
+    const cont = document.getElementById("classificados-container");
+    if (!cont) return;
+    const lista = calcularClassificados();
+    if (!lista.length) { cont.innerHTML = ""; return; }
+    const idx = porId();
+    const itens = lista.map((c) => `
+      <div class="clf-item">
+        <span class="clf-vaga">${escapeHtml(c.vaga)}</span>
+        ${escudoHTML(idx[c.time.id], "sm")}
+        <span class="clf-nome">${escapeHtml(c.time.nome)}</span>
+        <span class="clf-pts">${c.time.pts} pts</span>
+      </div>`).join("");
+    cont.innerHTML = `
+      <h3 class="clf-titulo">Classificados da fase de grupos</h3>
+      <p class="clf-sub">1º e 2º de cada grupo + os 2 melhores 3º colocados
+        <small>(critério: pontos → saldo → gols pró)</small></p>
+      <div class="clf-lista">${itens}</div>`;
+  }
+
+  /** Faixa de campeão, quando a final já tiver vencedor. */
+  function renderCampeao() {
+    const cont = document.getElementById("bracket-container");
+    if (!cont) return;
+    const final = jogosDaFase("final")[0];
+    const venc = final ? vencedorDoJogo(final) : "";
+    if (!venc) return;
+    const idx = porId();
+    const faixa = document.createElement("div");
+    faixa.className = "mm-campeao";
+    faixa.innerHTML = `<span class="mm-campeao-tit">🏆 Campeão</span>
+      ${escudoHTML(idx[venc], "md")}
+      <span class="mm-campeao-nome">${escapeHtml(nomeTime(venc))}</span>`;
+    cont.appendChild(faixa);
   }
 
   /* =======================================================================
@@ -363,19 +573,29 @@
     const venceuM = realizado && Number(j.golsMandante) > Number(j.golsVisitante);
     const venceuV = realizado && Number(j.golsVisitante) > Number(j.golsMandante);
 
+    const fase = faseDoJogo(j);
+    const pen = temPenaltis(j);
+    // no mata-mata, quem passou pode ter sido decidido nos pênaltis
+    const vencMM = ehMataMata(j) ? vencedorDoJogo(j) : "";
+    const destacaM = vencMM ? vencMM === j.mandante : venceuM;
+    const destacaV = vencMM ? vencMM === j.visitante : venceuV;
+
     const centro = realizado
       ? `<div class="placar">
-           <span class="${venceuM ? "vitorioso" : ""}">${j.golsMandante}</span>
+           <span class="${destacaM ? "vitorioso" : ""}">${j.golsMandante}</span>
            <span class="x">×</span>
-           <span class="${venceuV ? "vitorioso" : ""}">${j.golsVisitante}</span>
-         </div>`
+           <span class="${destacaV ? "vitorioso" : ""}">${j.golsVisitante}</span>
+         </div>
+         ${pen ? `<div class="placar-pen">pênaltis ${j.penaltisTimeA} × ${j.penaltisTimeB}</div>` : ""}`
       : `<div class="placar placar--futuro"><span class="vs">×</span>
            <span class="hora">${j.hora || "a definir"}</span></div>`;
 
     return `
       <div class="jogo ${realizado ? "jogo--fim" : "jogo--proximo"}">
         <div class="jogo-top">
-          ${g ? `<span class="tag-grupo tag-grupo--${g}">Grupo ${g}</span>` : ""}
+          ${ehMataMata(j)
+            ? `<span class="tag-fase">${escapeHtml(nomeDaFase(fase))}</span>`
+            : (g ? `<span class="tag-grupo tag-grupo--${g}">Grupo ${g}</span>` : "")}
           <span class="jogo-rodada">${j.rodada ? "Rodada " + j.rodada : ""}</span>
           <span class="jogo-data">${formatarData(j.data)}</span>
         </div>
@@ -562,6 +782,13 @@
       if (!b) return;
       filtroArtGrupo = b.dataset.grupoArt;
       renderArtilheiros();
+    });
+    const toggleFase = document.getElementById("fase-toggle");
+    if (toggleFase) toggleFase.addEventListener("click", (e) => {
+      const b = e.target.closest(".fase-btn");
+      if (!b) return;
+      vistaFase = b.dataset.faseVista;
+      aplicarVistaFase();
     });
   }
 
@@ -1435,7 +1662,14 @@
     if (f.ate && (!j.data || j.data > f.ate)) return false;
     if (f.time && j.mandante !== f.time && j.visitante !== f.time) return false;
     if (f.rodada && String(j.rodada) !== String(f.rodada)) return false;
-    if (f.grupo && grupoDoJogo(j) !== f.grupo) return false;
+    if (f.grupo) {
+      if (f.grupo.indexOf("fase:") === 0) {
+        if (faseDoJogo(j) !== f.grupo.slice(5)) return false;
+      } else {
+        // filtro por grupo só considera a fase de grupos
+        if (ehMataMata(j) || grupoDoJogo(j) !== f.grupo) return false;
+      }
+    }
     if (f.status === "encerrado" && !jogoRealizado(j)) return false;
     if (f.status === "aberto" && jogoRealizado(j)) return false;
     return true;
@@ -1456,9 +1690,12 @@
       rodadas.map((r) => `<option value="${r}">Rodada ${r}</option>`).join("");
     rodSel.value = filtroJogos.rodada; filtroJogos.rodada = rodSel.value;
 
+    // Grupos e fases do mata-mata no mesmo seletor. As fases usam o prefixo
+    // "fase:" para não colidir com os ids de grupo (A, B, C).
     const grpSel = document.getElementById("ff-grupo");
     grpSel.innerHTML = '<option value="">Todos</option>' +
-      STATE.grupos.map((g) => `<option value="${g.id}">${escapeHtml(g.nome)}</option>`).join("");
+      STATE.grupos.map((g) => `<option value="${g.id}">${escapeHtml(g.nome)}</option>`).join("") +
+      FASES_MATA_MATA.map((f) => `<option value="fase:${f.id}">${escapeHtml(f.nome)}</option>`).join("");
     grpSel.value = filtroJogos.grupo; filtroJogos.grupo = grpSel.value;
 
     // Situação tem opções fixas no HTML; só restauramos a seleção.
@@ -1503,11 +1740,15 @@
 
     const lista = visiveis.map(({ j, i }) => {
       const placar = jogoRealizado(j) ? `${j.golsMandante} × ${j.golsVisitante}` : "— × —";
+      const penal = temPenaltis(j) ? ` <i class="gi-pen">(${j.penaltisTimeA}×${j.penaltisTimeB} pên.)</i>` : "";
+      const origem = ehMataMata(j)
+        ? nomeDaFase(faseDoJogo(j)) + " · "
+        : (grupoDoJogo(j) ? "Grupo " + grupoDoJogo(j) + " · " : "");
       return `
         <div class="ger-item">
           <div class="ger-item-info">
-            <span class="ger-item-tit"><span class="gi-time">${escapeHtml(nomeTime(j.mandante))}</span> <b class="gi-placar">${placar}</b> <span class="gi-time">${escapeHtml(nomeTime(j.visitante))}</span></span>
-            <span class="ger-item-sub">${grupoDoJogo(j) ? "Grupo " + grupoDoJogo(j) + " · " : ""}${j.rodada ? "Rod " + escapeHtml(String(j.rodada)) + " · " : ""}${escapeHtml(j.data || "sem data")}</span>
+            <span class="ger-item-tit"><span class="gi-time">${escapeHtml(nomeTime(j.mandante))}</span> <b class="gi-placar">${placar}</b> <span class="gi-time">${escapeHtml(nomeTime(j.visitante))}</span>${penal}</span>
+            <span class="ger-item-sub">${escapeHtml(origem)}${j.rodada ? "Rod " + escapeHtml(String(j.rodada)) + " · " : ""}${escapeHtml(j.data || "sem data")}</span>
           </div>
           <div class="ger-item-acoes">
             <button class="btn-mini" data-editar-jogo="${i}">Editar</button>
@@ -1560,9 +1801,21 @@
           <input type="number" min="0" id="fj-gv" value="${val(j.golsVisitante)}" placeholder="—">
         </div>
       </div>
+      <div class="campo campo--placar" id="fj-penaltis-bloco" hidden>
+        <label>Pênaltis <small>(empate no mata-mata — quem passou de fase)</small></label>
+        <div class="placar-inputs">
+          <input type="number" min="0" id="fj-pa" value="${val(j.penaltisTimeA)}" placeholder="—">
+          <span>×</span>
+          <input type="number" min="0" id="fj-pb" value="${val(j.penaltisTimeB)}" placeholder="—">
+        </div>
+      </div>
       <div class="campo">
         <label>Visitante</label>
         <select id="fj-visitante">${opcoesTimes(j.visitante)}</select>
+      </div>
+      <div class="campo">
+        <label>Fase</label>
+        <select id="fj-fase">${opcoesFases(faseDoJogo(j))}</select>
       </div>
       <div class="campo-linha">
         <div class="campo"><label>Rodada</label><input type="number" min="1" id="fj-rodada" value="${val(j.rodada)}"></div>
@@ -1592,12 +1845,50 @@
     document.getElementById("fj-mandante").addEventListener("change", aoMudarTimeDoJogo);
     document.getElementById("fj-visitante").addEventListener("change", aoMudarTimeDoJogo);
 
+    // pênaltis aparecem/desaparecem conforme fase + placar empatado
+    atualizarBlocoPenaltis();
+    ["fj-fase", "fj-gm", "fj-gv"].forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) { el.addEventListener("change", atualizarBlocoPenaltis); el.addEventListener("input", atualizarBlocoPenaltis); }
+    });
+
     document.getElementById("fj-salvar").onclick = salvarFormJogo;
     document.getElementById("fj-cancelar").onclick = () => { fecharFormJogo(); };
   }
 
   /* ---------- Sub-formulário: gols marcados no jogo ---------- */
   let golsForm = [];
+
+  /** Opções do seletor de fase no formulário de jogo. */
+  function opcoesFases(sel) {
+    const fases = [{ id: "grupos", nome: "Fase de Grupos" }].concat(
+      FASES_MATA_MATA.map((f) => ({ id: f.id, nome: f.nome }))
+    );
+    return fases.map((f) =>
+      `<option value="${f.id}" ${f.id === sel ? "selected" : ""}>${escapeHtml(f.nome)}</option>`
+    ).join("");
+  }
+
+  /**
+   * Os inputs de pênaltis só aparecem quando faz sentido: fase de mata-mata
+   * E placar preenchido E empatado. Em qualquer outro caso ficam escondidos.
+   */
+  function atualizarBlocoPenaltis() {
+    const bloco = document.getElementById("fj-penaltis-bloco");
+    if (!bloco) return;
+    const fase = (document.getElementById("fj-fase") || {}).value || "grupos";
+    const gm = (document.getElementById("fj-gm") || {}).value;
+    const gv = (document.getElementById("fj-gv") || {}).value;
+    const ambos = String(gm).trim() !== "" && String(gv).trim() !== "";
+    const empate = ambos && Number(gm) === Number(gv);
+    const mostrar = IDS_MATA_MATA.indexOf(fase) !== -1 && empate;
+    bloco.hidden = !mostrar;
+    if (!mostrar) {
+      // some da tela = não persiste pênaltis herdados de um estado inválido
+      const pa = document.getElementById("fj-pa"), pb = document.getElementById("fj-pb");
+      if (pa) pa.value = ""; if (pb) pb.value = "";
+    }
+  }
 
   /** id do <datalist> de sugestões de um time (um por time do confronto). */
   function idDatalistDoTime(idTime) {
@@ -1687,8 +1978,14 @@
     if (um !== uv) { alert("Preencha os DOIS placares, ou deixe os dois vazios."); return; }
 
     const idxTimes = porId();
+    const faseEscolhida = (document.getElementById("fj-fase") || {}).value || "grupos";
+    const mataMata = IDS_MATA_MATA.indexOf(faseEscolhida) !== -1;
+
     const jogo = {
-      grupo: (idxTimes[mandante] && idxTimes[mandante].grupo) || "",
+      // No mata-mata os times podem ser de grupos diferentes, então o campo
+      // "grupo" fica vazio — é o que mantém a tabela de grupos intacta.
+      grupo: mataMata ? "" : ((idxTimes[mandante] && idxTimes[mandante].grupo) || ""),
+      fase: faseEscolhida,
       rodada: document.getElementById("fj-rodada").value ? Number(document.getElementById("fj-rodada").value) : "",
       mandante, visitante,
       golsMandante: um ? Number(gm) : null,
@@ -1697,6 +1994,19 @@
       hora: document.getElementById("fj-hora").value,
       local: document.getElementById("fj-local").value.trim(),
     };
+
+    // Pênaltis: só guarda quando é mata-mata E o placar empatou.
+    if (mataMata && um && uv && Number(gm) === Number(gv)) {
+      const pa = (document.getElementById("fj-pa") || {}).value;
+      const pb = (document.getElementById("fj-pb") || {}).value;
+      const temPa = String(pa).trim() !== "", temPb = String(pb).trim() !== "";
+      if (temPa !== temPb) { alert("Preencha os DOIS placares de pênaltis, ou deixe os dois vazios."); return; }
+      if (temPa && temPb) {
+        if (Number(pa) === Number(pb)) { alert("O placar dos pênaltis não pode ser empate — alguém precisa passar de fase."); return; }
+        jogo.penaltisTimeA = Number(pa);
+        jogo.penaltisTimeB = Number(pb);
+      }
+    }
 
     const gols = golsForm
       .map((g) => ({ time: g.time, jogador: nomeJogadorLimpo(g.jogador), gols: Number(g.gols) || 0 }))
