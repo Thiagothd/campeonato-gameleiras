@@ -141,13 +141,49 @@ if ($project -eq $null) {
   Write-Host "Pages project '$ProjectName' already exists."
 }
 
-Write-Host "Deploying project root to Cloudflare Pages..."
+# ATENCAO: 'wrangler pages deploy' NAO respeita o .assetsignore (isso e recurso
+# de Workers Assets). Publicar a raiz do projeto subia tudo: backups com dump do
+# banco, este script, firestore.rules, .gitignore, documentos internos. Por isso
+# montamos uma pasta temporaria com SOMENTE os arquivos do site e publicamos ela.
+$publishDir = Join-Path ([System.IO.Path]::GetTempPath()) ("cfpages-" + $ProjectName)
+if (Test-Path $publishDir) { Remove-Item -Recurse -Force $publishDir }
+New-Item -ItemType Directory -Force -Path $publishDir | Out-Null
+
+Copy-Item -Path "index.html" -Destination $publishDir
+Copy-Item -Path "assets" -Destination $publishDir -Recurse
+
+# imagens de origem pesadas nunca vao para o ar (o site usa as versoes .webp)
+$sobras = @("assets\img\Esporte", "assets\img\Esporte.zip")
+foreach ($s in $sobras) {
+  $p = Join-Path $publishDir $s
+  if (Test-Path $p) { Remove-Item -Recurse -Force $p }
+}
+
+# trava de seguranca: nada fora do site pode estar na pasta de publicacao
+$proibidos = Get-ChildItem -Path $publishDir -Recurse -File | Where-Object {
+  $_.Extension -in @(".ps1", ".toml", ".rules", ".md", ".log", ".zip", ".json") -or
+  $_.Name -in @(".gitignore", ".assetsignore", ".env") -or
+  $_.FullName -like "*\backups\*"
+}
+if ($proibidos.Count -gt 0) {
+  $lista = ($proibidos | ForEach-Object { $_.FullName.Replace($publishDir, "") }) -join ", "
+  throw "Arquivos que nao pertencem ao site foram encontrados na pasta de publicacao: $lista"
+}
+
+$totalArquivos = (Get-ChildItem -Path $publishDir -Recurse -File).Count
+if (-not (Test-Path (Join-Path $publishDir "index.html"))) {
+  throw "index.html nao chegou na pasta de publicacao. Deploy abortado."
+}
+Write-Host "Publicando $totalArquivos arquivos (somente o site) de $publishDir..."
+
 Invoke-Wrangler -Arguments @(
-  "pages", "deploy", ".",
+  "pages", "deploy", $publishDir,
   "--project-name", $ProjectName,
   "--branch", $ProductionBranch,
   "--commit-dirty=true"
 )
+
+Remove-Item -Recurse -Force $publishDir
 
 $project = Invoke-CfApi -Method GET -Path $projectPath
 $pagesSubdomain = $project.result.subdomain
