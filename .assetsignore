@@ -8,6 +8,11 @@ node_modules/
 .env
 .env.*
 
+# Backups (código antigo + dump do banco). Está no .gitignore, mas o deploy
+# usa ESTE arquivo — sem esta linha a pasta era publicada e ficava acessível
+# em /backups/... no site.
+backups/
+
 wrangler.toml
 deploy-cloudflare-pages.ps1
 
