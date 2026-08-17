@@ -5,12 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#0a3d2b">
   <title>Campeonato Municipal de Futebol de Gameleiras</title>
-  <link rel="icon" type="image/webp" href="assets/img/campeonato.webp?v=40">
+  <link rel="icon" type="image/webp" href="assets/img/campeonato.webp?v=42">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Anton&family=Barlow+Condensed:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="assets/css/estilo.css?v=40">
-  <link rel="stylesheet" href="assets/css/banner-modelo.css?v=40">
+  <link rel="stylesheet" href="assets/css/estilo.css?v=42">
+  <link rel="stylesheet" href="assets/css/banner-modelo.css?v=42">
 </head>
 <body>
 
@@ -44,11 +44,27 @@
       <div class="secao-titulo">
         <h2>Classificação</h2>
       </div>
-      <div id="grupos-container" class="grupos-container"></div>
-      <div class="legenda-siglas">
-        <span><b>J</b> Jogos</span><span><b>V</b> Vitórias</span><span><b>E</b> Empates</span>
-        <span><b>D</b> Derrotas</span><span><b>GP</b> Gols Pró</span><span><b>GC</b> Gols Contra</span>
-        <span><b>SG</b> Saldo</span><span><b>P</b> Pontos</span>
+
+      <!-- alterna entre a tabela de grupos e o chaveamento do mata-mata -->
+      <div class="fase-toggle" id="fase-toggle" role="tablist" aria-label="Fase do campeonato">
+        <button type="button" class="fase-btn ativo" data-fase-vista="grupos" role="tab" aria-selected="true">Fase de Grupos</button>
+        <button type="button" class="fase-btn" data-fase-vista="mata-mata" role="tab" aria-selected="false">Mata-Mata</button>
+      </div>
+
+      <!-- vista: fase de grupos -->
+      <div id="vista-grupos">
+        <div id="grupos-container" class="grupos-container"></div>
+        <div class="legenda-siglas">
+          <span><b>J</b> Jogos</span><span><b>V</b> Vitórias</span><span><b>E</b> Empates</span>
+          <span><b>D</b> Derrotas</span><span><b>GP</b> Gols Pró</span><span><b>GC</b> Gols Contra</span>
+          <span><b>SG</b> Saldo</span><span><b>P</b> Pontos</span>
+        </div>
+      </div>
+
+      <!-- vista: chaveamento do mata-mata -->
+      <div id="vista-mata-mata" hidden>
+        <div id="bracket-container" class="bracket"></div>
+        <div id="classificados-container" class="classificados"></div>
       </div>
     </section>
 
@@ -303,8 +319,8 @@
   </div>
 
   <script defer src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-  <script defer src="assets/js/dados.js?v=40"></script>
-  <script type="module" async src="assets/js/db.js?v=40"></script>
-  <script defer src="assets/js/app.js?v=40"></script>
+  <script defer src="assets/js/dados.js?v=42"></script>
+  <script type="module" async src="assets/js/db.js?v=42"></script>
+  <script defer src="assets/js/app.js?v=42"></script>
 </body>
 </html>

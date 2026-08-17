@@ -1430,6 +1430,159 @@ img { max-width: 100%; display: block; }
 .gol-row .gol-qtd { text-align: center; }
 .gol-row input:focus, .gol-row select:focus { outline: none; border-color: var(--verde-brilho); }
 .gol-remover { padding: 7px 10px; }
+.gi-pen { font-style: normal; font-size: .72rem; color: var(--texto-fraco); }
+
+/* =========================================================================
+   MATA-MATA — alternador de fase e chaveamento (bracket)
+   ========================================================================= */
+.fase-toggle {
+  display: flex; gap: 6px; margin-bottom: 18px;
+  background: rgba(255,255,255,.04); border: 1px solid var(--linha);
+  border-radius: 999px; padding: 4px;
+}
+.fase-btn {
+  flex: 1; cursor: pointer; border: none; background: transparent;
+  color: var(--texto-suave); border-radius: 999px; padding: 9px 14px;
+  font-family: var(--fonte-cond); font-weight: 700; font-size: .92rem;
+  text-transform: uppercase; letter-spacing: .03em; transition: .16s;
+}
+.fase-btn:hover { color: #fff; background: rgba(255,255,255,.05); }
+.fase-btn.ativo {
+  color: var(--verde-950);
+  background: linear-gradient(180deg, var(--verde-brilho), var(--verde-500));
+  box-shadow: 0 4px 12px rgba(47,191,113,.25);
+}
+
+/* --- chaveamento: horizontal no desktop, empilhado no celular --- */
+.bracket { display: grid; grid-template-columns: 1fr; gap: 20px; }
+.bracket-col { min-width: 0; }
+.bracket-fase {
+  margin: 0 0 12px; font-family: var(--fonte-titulo); font-weight: 400;
+  text-transform: uppercase; letter-spacing: .02em; font-size: 1.1rem; color: #fff;
+  padding-bottom: 8px; border-bottom: 2px solid var(--dourado);
+}
+.bracket-jogos { display: flex; flex-direction: column; gap: 10px; }
+.bracket-slot { display: flex; flex-direction: column; justify-content: center; min-width: 0; }
+
+.mm-jogo {
+  background: linear-gradient(180deg, var(--verde-850), var(--verde-900));
+  border: 1px solid var(--linha-forte); border-radius: 12px;
+  padding: 8px; display: flex; flex-direction: column; gap: 4px;
+}
+.mm-jogo--vazio { border-style: dashed; background: rgba(255,255,255,.02); }
+/* etiqueta da chave (Quartas 1, Semifinal 2, Final) dentro do card */
+.mm-chave {
+  font-family: var(--fonte-cond); font-weight: 700; font-size: .68rem;
+  text-transform: uppercase; letter-spacing: .06em;
+  color: var(--texto-fraco); padding: 0 8px 2px;
+}
+/* lado ainda não definido: mostra a vaga prevista, em tom mais discreto */
+.mm-lado--previsto .mm-nome { color: var(--texto-suave); font-weight: 600; }
+.mm-lado--previsto .mm-placar { color: var(--texto-fraco); }
+.mm-slot {
+  flex: 0 0 auto; display: grid; place-items: center;
+  width: 32px; height: 32px; border-radius: 22%;
+  background: rgba(255,255,255,.05); color: var(--texto-fraco);
+  font-family: var(--fonte-cond); font-weight: 700; font-size: .8rem;
+  box-shadow: inset 0 0 0 1px var(--linha);
+}
+.mm-lado {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 8px; border-radius: 8px; min-width: 0;
+}
+.mm-lado--vence {
+  background: rgba(47,191,113,.12);
+  box-shadow: inset 3px 0 0 var(--verde-brilho);
+}
+.mm-lado--perde { opacity: .55; }
+.mm-nome {
+  flex: 1; min-width: 0; font-weight: 700; font-size: .9rem; color: #fff;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.mm-lado--vence .mm-nome { color: var(--verde-brilho); }
+.mm-placar {
+  flex: 0 0 auto; font-family: var(--fonte-cond); font-weight: 700;
+  font-size: 1.15rem; color: var(--dourado-claro);
+}
+.mm-pen { font-style: normal; font-size: .68rem; color: var(--texto-fraco); margin-left: 3px; }
+.mm-meta { font-size: .72rem; color: var(--texto-fraco); text-align: center; padding-top: 2px; }
+.mm-aviso {
+  font-size: .72rem; text-align: center; color: var(--dourado-claro);
+  background: rgba(244,180,26,.1); border-radius: 6px; padding: 3px 6px;
+}
+
+/* faixa de campeão */
+.mm-campeao {
+  grid-column: 1 / -1;
+  display: flex; align-items: center; justify-content: center; gap: 12px;
+  margin-top: 4px; padding: 16px;
+  background: linear-gradient(120deg, rgba(244,180,26,.16), rgba(47,191,113,.14));
+  border: 1px solid var(--dourado); border-radius: 14px;
+}
+.mm-campeao-tit {
+  font-family: var(--fonte-cond); font-weight: 700; font-size: .85rem;
+  text-transform: uppercase; letter-spacing: .08em; color: var(--dourado-claro);
+}
+.mm-campeao-nome {
+  font-family: var(--fonte-titulo); font-weight: 400; text-transform: uppercase;
+  font-size: 1.5rem; color: #fff;
+}
+
+/* lista dos classificados */
+.classificados { margin-top: 26px; }
+.clf-titulo {
+  margin: 0 0 4px; font-family: var(--fonte-titulo); font-weight: 400;
+  text-transform: uppercase; font-size: 1.15rem; color: #fff;
+}
+.clf-sub { margin: 0 0 14px; font-size: .82rem; color: var(--texto-fraco); }
+.clf-sub small { color: var(--texto-fraco); }
+.clf-lista { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 8px; }
+.clf-item {
+  display: flex; align-items: center; gap: 10px; min-width: 0;
+  background: rgba(255,255,255,.03); border: 1px solid var(--linha);
+  border-radius: 10px; padding: 8px 12px;
+}
+.clf-vaga {
+  flex: 0 0 auto; display: inline-grid; place-items: center; min-width: 34px;
+  padding: 2px 6px; border-radius: 6px;
+  background: var(--verde-700); color: var(--verde-brilho);
+  font-family: var(--fonte-cond); font-weight: 700; font-size: .74rem;
+}
+.clf-nome {
+  flex: 1; min-width: 0; font-weight: 600; font-size: .88rem; color: #fff;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.clf-pts { flex: 0 0 auto; font-family: var(--fonte-cond); font-weight: 700; font-size: .82rem; color: var(--dourado-claro); }
+
+/* etiqueta de fase e pênaltis nos cards públicos de jogo */
+.tag-fase {
+  font-family: var(--fonte-cond); font-weight: 700; font-size: .8rem;
+  text-transform: uppercase; letter-spacing: .04em;
+  padding: 2px 9px; border-radius: 6px;
+  background: var(--verde-brilho); color: var(--verde-950);
+}
+.placar-pen { font-size: .7rem; color: var(--texto-fraco); text-align: center; margin-top: 2px; }
+
+/* Desktop: funil clássico. As 3 colunas têm a MESMA ALTURA e cada uma
+   distribui seus cards com space-around — assim a Semifinal 1 cai
+   matematicamente no centro entre Quartas 1 e Quartas 2, e a Final no
+   centro entre as duas semis. */
+@media (min-width: 900px) {
+  .bracket {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+    align-items: stretch;          /* colunas com altura igual */
+    min-height: 760px;             /* espaço para os 4 cards de quartas respirarem */
+  }
+  .bracket-col { display: flex; flex-direction: column; }
+  .bracket-jogos {
+    flex: 1;                       /* ocupa toda a altura da coluna */
+    gap: 0;
+  }
+  /* Cada slot pega 1/N da coluna e centra o card: o centro de cada confronto
+     cai no ponto exato do funil, independente da altura do card. */
+  .bracket-slot { flex: 1 1 0; min-height: 0; }
+}
 
 /* =========================================================================
    RESPONSIVO
@@ -1475,6 +1628,15 @@ img { max-width: 100%; display: block; }
   .camp-slogan { font-size: .92rem; }
 
   .conteudo { padding: 22px 12px 54px; }
+
+  /* mata-mata no celular: blocos verticais bem divididos */
+  .fase-btn { font-size: .78rem; padding: 8px 6px; letter-spacing: 0; }
+  .bracket { gap: 16px; }
+  .bracket-fase { font-size: 1rem; }
+  .mm-nome { font-size: .84rem; }
+  .mm-campeao { flex-direction: column; gap: 6px; padding: 14px; }
+  .mm-campeao-nome { font-size: 1.25rem; text-align: center; }
+  .clf-lista { grid-template-columns: 1fr; }
   .abas-inner { gap: 4px; padding: 8px 8px; }
   .aba-btn { font-size: .72rem; padding: 9px 3px; letter-spacing: 0; white-space: nowrap; }
   .gol-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr) 48px auto; gap: 5px; }
