@@ -41,7 +41,7 @@ assets/img/             — logo do campeonato, escudos dos times, logo Speedlin
 firestore.rules         — regras de segurança do Firestore (documentado, ver §6)
 wrangler.toml           — config do Cloudflare Pages
 deploy-cloudflare-pages.ps1 — script que publica em produção (ver §5)
-.assetsignore           — filtra o que o Cloudflare Pages publica (CUIDADO, ver §6)
+.assetsignore           — NÃO tem efeito no Pages, é só documentação (ver §6)
 backups/                — backups de código+banco feitos antes de deploys (gitignored)
 ```
 
@@ -234,12 +234,24 @@ logo do rodapé, arquivos de preview soltos na raiz).
   com um allow-list explícito (`!assets/img/LogoSemFundo.png` nos dois
   arquivos). **Se adicionar qualquer nova imagem PNG que precise ir para
   produção, lembre de checar esses dois arquivos.**
-- **`.assetsignore` é o que realmente decide o que o Cloudflare publica**
-  (não é o `.gitignore` — são arquivos diferentes, o Wrangler não olha pro
-  git, olha pro disco filtrado por `.assetsignore`). Arquivos de teste que
-  ficarem soltos na raiz do projeto (mesmo sem estar no git) SERIAM
-  publicados se não estiverem no `.assetsignore`. Por isso `preview-*.html`
-  está bloqueado lá.
+- **CORRIGIDO EM 17/08/2026 — o `.assetsignore` NÃO funciona no Pages.**
+  Esta seção afirmava que o `.assetsignore` decidia o que era publicado.
+  **Isso estava errado.** O `.assetsignore` é recurso de *Workers Assets*;
+  o `wrangler pages deploy` simplesmente o ignora. Consequência real: por
+  vários deploys a raiz inteira foi publicada — 121 arquivos, incluindo
+  `backups/` (com dump do banco), `deploy-cloudflare-pages.ps1`,
+  `firestore.rules`, `wrangler.toml`, `.gitignore` e o próprio
+  `CONTEXTO.md`. Nenhuma credencial vazou (o script lê token e account id
+  de variáveis de ambiente), mas era exposição desnecessária.
+  **Como é hoje:** o `deploy-cloudflare-pages.ps1` monta uma pasta
+  temporária com apenas `index.html` + `assets/` (menos
+  `assets/img/Esporte/`) e publica só ela — 40 arquivos. O script tem uma
+  trava que **aborta o deploy** se algum arquivo fora do site aparecer na
+  pasta, ou se o `index.html` não chegar.
+  **Nunca volte a rodar `wrangler pages deploy .` na raiz.** Se precisar
+  publicar um arquivo novo, adicione a cópia dele no script — mexer no
+  `.assetsignore` não tem efeito nenhum no que vai para o ar.
+  O `.assetsignore` foi mantido no repo só como documentação da intenção.
 - **Regras do Firestore (`firestore.rules`):** qualquer usuário autenticado
   (não só o admin) tecnicamente pode escrever no banco, porque o
   Firebase Auth por padrão permite auto-cadastro de contas. Isso foi
