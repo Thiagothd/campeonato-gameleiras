@@ -10,7 +10,7 @@
   "use strict";
 
   const IMG_TIMES = "assets/img/times/";
-  const CACHE_VER = "41"; // troque quando atualizar imagens/CSS/JS (força o navegador a rebaixar)
+  const CACHE_VER = "42"; // troque quando atualizar imagens/CSS/JS (força o navegador a rebaixar)
 
   function comVersao(base) {
     if (!base) return "";
@@ -185,31 +185,75 @@
      estiver marcado é tratado como "grupos". Só os jogos de mata-mata contam
      para o chaveamento, e só os de grupos entram na tabela de classificação.
      ======================================================================= */
-  const FASES_MATA_MATA = [
-    { id: "quartas",   nome: "Quartas de Final", curto: "Quartas", jogos: 4 },
-    { id: "semifinal", nome: "Semifinal",        curto: "Semi",    jogos: 2 },
-    { id: "final",     nome: "Final",            curto: "Final",   jogos: 1 },
+  /**
+   * CHAVES FIXAS do mata-mata. Cada jogo de mata-mata ocupa exatamente uma
+   * chave, e cada chave tem um lugar fixo na árvore — é isso que garante o
+   * desenho estável do chaveamento.
+   *
+   * - `vagaA`/`vagaB`: de onde vem cada lado nas quartas (vagas da fase de
+   *   grupos). Serve para mostrar o confronto previsto antes do jogo existir.
+   * - `de`: nas fases seguintes, as duas chaves que alimentam este confronto.
+   */
+  const CHAVES = [
+    { id: "quartas1",   fase: "quartas",   nome: "Quartas 1",   vagaA: "1A",  vagaB: "3M2" },
+    { id: "quartas2",   fase: "quartas",   nome: "Quartas 2",   vagaA: "2B",  vagaB: "2C" },
+    { id: "quartas3",   fase: "quartas",   nome: "Quartas 3",   vagaA: "1B",  vagaB: "3M1" },
+    { id: "quartas4",   fase: "quartas",   nome: "Quartas 4",   vagaA: "1C",  vagaB: "2A" },
+    { id: "semifinal1", fase: "semifinal", nome: "Semifinal 1", de: ["quartas1", "quartas2"] },
+    { id: "semifinal2", fase: "semifinal", nome: "Semifinal 2", de: ["quartas3", "quartas4"] },
+    { id: "final",      fase: "final",     nome: "Final",       de: ["semifinal1", "semifinal2"] },
   ];
-  const IDS_MATA_MATA = FASES_MATA_MATA.map((f) => f.id);
+  const IDS_CHAVES = CHAVES.map((c) => c.id);
 
-  /** Fase de um jogo; ausente/desconhecida = "grupos" (retrocompatível). */
-  function faseDoJogo(j) {
+  /** Agrupamento das chaves por coluna do chaveamento. */
+  const COLUNAS_MATA_MATA = [
+    { fase: "quartas",   nome: "Quartas de Final" },
+    { fase: "semifinal", nome: "Semifinal" },
+    { fase: "final",     nome: "Final" },
+  ];
+
+  // Valores antigos ("quartas", "semifinal") viravam a fase inteira. Se
+  // aparecerem, caem na primeira chave livre daquela fase para não sumirem.
+  const FASES_ANTIGAS = { quartas: "quartas1", semifinal: "semifinal1", final: "final" };
+
+  /** Chave de um jogo; ausente/desconhecida = "grupos" (retrocompatível). */
+  function chaveDoJogo(j) {
     const f = j && j.fase ? String(j.fase) : "";
-    return IDS_MATA_MATA.indexOf(f) !== -1 ? f : "grupos";
+    if (IDS_CHAVES.indexOf(f) !== -1) return f;
+    if (FASES_ANTIGAS[f]) return FASES_ANTIGAS[f];
+    return "grupos";
+  }
+
+  /** Fase (coluna) de um jogo: grupos | quartas | semifinal | final. */
+  function faseDoJogo(j) {
+    const ch = chaveDoJogo(j);
+    if (ch === "grupos") return "grupos";
+    const def = CHAVES.find((c) => c.id === ch);
+    return def ? def.fase : "grupos";
   }
 
   function ehMataMata(j) {
-    return faseDoJogo(j) !== "grupos";
+    return chaveDoJogo(j) !== "grupos";
+  }
+
+  function nomeDaChave(idChave) {
+    const c = CHAVES.find((x) => x.id === idChave);
+    return c ? c.nome : "Fase de Grupos";
   }
 
   function nomeDaFase(idFase) {
-    const f = FASES_MATA_MATA.find((x) => x.id === idFase);
-    return f ? f.nome : "Fase de Grupos";
+    const c = COLUNAS_MATA_MATA.find((x) => x.fase === idFase);
+    return c ? c.nome : "Fase de Grupos";
   }
 
   /** Jogos que valem para a tabela de classificação (só fase de grupos). */
   function jogosDeGrupos() {
     return STATE.jogos.filter((j) => !ehMataMata(j));
+  }
+
+  /** O jogo cadastrado numa chave específica (ou undefined). */
+  function jogoDaChave(idChave) {
+    return STATE.jogos.find((j) => chaveDoJogo(j) === idChave);
   }
 
   function jogosDaFase(idFase) {
@@ -218,6 +262,41 @@
 
   function temMataMata() {
     return STATE.jogos.some(ehMataMata);
+  }
+
+  /**
+   * Quem ocupa cada lado de uma chave, resolvendo o que já é conhecido:
+   * nas quartas vem da vaga da fase de grupos; nas fases seguintes, do
+   * vencedor da chave anterior. Devolve { id, rotulo } por lado — `id` só
+   * existe quando o time já está definido.
+   */
+  function ladosPrevistosDaChave(idChave) {
+    const def = CHAVES.find((c) => c.id === idChave);
+    if (!def) return [{ rotulo: "A definir" }, { rotulo: "A definir" }];
+
+    if (def.de) {
+      return def.de.map((origem) => {
+        const jogo = jogoDaChave(origem);
+        const venc = jogo ? vencedorDoJogo(jogo) : "";
+        return venc
+          ? { id: venc, rotulo: nomeTime(venc) }
+          : { rotulo: "Vencedor " + nomeDaChave(origem) };
+      });
+    }
+
+    // quartas: resolve pelas vagas (1A, 2B, 3M1…) quando já há classificados
+    const porVaga = Object.fromEntries(calcularClassificados().map((c) => [c.vaga, c.time]));
+    return [def.vagaA, def.vagaB].map((vaga) => {
+      const t = porVaga[vaga];
+      return t ? { id: t.id, rotulo: t.nome, vaga: vaga } : { rotulo: rotuloDaVaga(vaga) };
+    });
+  }
+
+  /** "1A" -> "1º Grupo A" · "3M1" -> "Melhor 3º (1)" */
+  function rotuloDaVaga(vaga) {
+    if (!vaga) return "A definir";
+    if (vaga.indexOf("3M") === 0) return "Melhor 3º (" + vaga.slice(2) + ")";
+    return vaga.charAt(0) + "º Grupo " + vaga.slice(1);
   }
 
   /** Pênaltis registrados e válidos (só fazem sentido no mata-mata empatado). */
@@ -458,14 +537,24 @@
   }
 
   /** Um confronto do chaveamento (com placar/pênaltis se já aconteceu). */
-  function confrontoHTML(jogo, rotuloVazio) {
+  function confrontoHTML(jogo, idChave) {
+    const idx = porId();
+
+    // Chave ainda sem jogo cadastrado: mostra o confronto PREVISTO no slot,
+    // resolvendo os times quando já forem conhecidos.
     if (!jogo) {
+      const lados = ladosPrevistosDaChave(idChave);
+      const linhas = lados.map((l) => `
+        <div class="mm-lado mm-lado--previsto">
+          ${l.id ? escudoHTML(idx[l.id], "sm") : '<span class="mm-slot">?</span>'}
+          <span class="mm-nome">${escapeHtml(l.rotulo)}</span>
+          <span class="mm-placar">–</span>
+        </div>`).join("");
       return `<div class="mm-jogo mm-jogo--vazio">
-          <div class="mm-lado"><span class="mm-nome">${escapeHtml(rotuloVazio || "A definir")}</span></div>
-          <div class="mm-lado"><span class="mm-nome">${escapeHtml(rotuloVazio || "A definir")}</span></div>
+          <div class="mm-chave">${escapeHtml(nomeDaChave(idChave))}</div>
+          ${linhas}
         </div>`;
     }
-    const idx = porId();
     const feito = jogoRealizado(jogo);
     const venc = vencedorDoJogo(jogo);
     const pen = temPenaltis(jogo);
@@ -487,6 +576,7 @@
     const empateSemPen = feito && !venc;
 
     return `<div class="mm-jogo ${feito ? "mm-jogo--fim" : ""}">
+        <div class="mm-chave">${escapeHtml(nomeDaChave(idChave))}</div>
         ${lado(jogo.mandante, jogo.golsMandante, jogo.penaltisTimeA)}
         ${lado(jogo.visitante, jogo.golsVisitante, jogo.penaltisTimeB)}
         ${meta.length ? `<div class="mm-meta">${escapeHtml(meta.join(" · "))}</div>` : ""}
@@ -498,16 +588,20 @@
     const cont = document.getElementById("bracket-container");
     if (!cont) return;
 
-    const colunas = FASES_MATA_MATA.map((fase) => {
-      const jogos = jogosDaFase(fase.id);
-      // mostra as vagas previstas da fase, mesmo que o jogo ainda não exista
-      const celulas = [];
-      for (let i = 0; i < fase.jogos; i++) {
-        celulas.push(confrontoHTML(jogos[i], "A definir"));
-      }
-      return `<div class="bracket-col bracket-col--${fase.id}">
-          <h3 class="bracket-fase">${escapeHtml(fase.nome)}</h3>
-          <div class="bracket-jogos">${celulas.join("")}</div>
+    // Cada uma das 7 chaves tem um slot FIXO na árvore. O card é desenhado
+    // pela chave, não pela ordem em que os jogos foram cadastrados.
+    const colunas = COLUNAS_MATA_MATA.map((col) => {
+      const chavesDaColuna = CHAVES.filter((c) => c.fase === col.fase);
+      // Cada card vai dentro de um .bracket-slot, que recebe uma fatia IGUAL da
+      // altura da coluna. Assim o centro de cada confronto cai sempre no mesmo
+      // lugar (1/8, 3/8… nas quartas; 1/4, 3/4 nas semis; 1/2 na final),
+      // formando o funil mesmo que os cards tenham alturas diferentes.
+      const celulas = chavesDaColuna
+        .map((c) => `<div class="bracket-slot">${confrontoHTML(jogoDaChave(c.id), c.id)}</div>`)
+        .join("");
+      return `<div class="bracket-col bracket-col--${col.fase}">
+          <h3 class="bracket-fase">${escapeHtml(col.nome)}</h3>
+          <div class="bracket-jogos">${celulas}</div>
         </div>`;
     }).join("");
 
@@ -594,7 +688,7 @@
       <div class="jogo ${realizado ? "jogo--fim" : "jogo--proximo"}">
         <div class="jogo-top">
           ${ehMataMata(j)
-            ? `<span class="tag-fase">${escapeHtml(nomeDaFase(fase))}</span>`
+            ? `<span class="tag-fase">${escapeHtml(nomeDaChave(chaveDoJogo(j)))}</span>`
             : (g ? `<span class="tag-grupo tag-grupo--${g}">Grupo ${g}</span>` : "")}
           <span class="jogo-rodada">${j.rodada ? "Rodada " + j.rodada : ""}</span>
           <span class="jogo-data">${formatarData(j.data)}</span>
@@ -1664,7 +1758,8 @@
     if (f.rodada && String(j.rodada) !== String(f.rodada)) return false;
     if (f.grupo) {
       if (f.grupo.indexOf("fase:") === 0) {
-        if (faseDoJogo(j) !== f.grupo.slice(5)) return false;
+        // agora o filtro é por CHAVE exata (Quartas 1, Semifinal 2, Final…)
+        if (chaveDoJogo(j) !== f.grupo.slice(5)) return false;
       } else {
         // filtro por grupo só considera a fase de grupos
         if (ehMataMata(j) || grupoDoJogo(j) !== f.grupo) return false;
@@ -1695,7 +1790,7 @@
     const grpSel = document.getElementById("ff-grupo");
     grpSel.innerHTML = '<option value="">Todos</option>' +
       STATE.grupos.map((g) => `<option value="${g.id}">${escapeHtml(g.nome)}</option>`).join("") +
-      FASES_MATA_MATA.map((f) => `<option value="fase:${f.id}">${escapeHtml(f.nome)}</option>`).join("");
+      CHAVES.map((c) => `<option value="fase:${c.id}">${escapeHtml(c.nome)}</option>`).join("");
     grpSel.value = filtroJogos.grupo; filtroJogos.grupo = grpSel.value;
 
     // Situação tem opções fixas no HTML; só restauramos a seleção.
@@ -1742,7 +1837,7 @@
       const placar = jogoRealizado(j) ? `${j.golsMandante} × ${j.golsVisitante}` : "— × —";
       const penal = temPenaltis(j) ? ` <i class="gi-pen">(${j.penaltisTimeA}×${j.penaltisTimeB} pên.)</i>` : "";
       const origem = ehMataMata(j)
-        ? nomeDaFase(faseDoJogo(j)) + " · "
+        ? nomeDaChave(chaveDoJogo(j)) + " · "
         : (grupoDoJogo(j) ? "Grupo " + grupoDoJogo(j) + " · " : "");
       return `
         <div class="ger-item">
@@ -1815,7 +1910,7 @@
       </div>
       <div class="campo">
         <label>Fase</label>
-        <select id="fj-fase">${opcoesFases(faseDoJogo(j))}</select>
+        <select id="fj-fase">${opcoesFases(chaveDoJogo(j), idx)}</select>
       </div>
       <div class="campo-linha">
         <div class="campo"><label>Rodada</label><input type="number" min="1" id="fj-rodada" value="${val(j.rodada)}"></div>
@@ -1859,14 +1954,24 @@
   /* ---------- Sub-formulário: gols marcados no jogo ---------- */
   let golsForm = [];
 
-  /** Opções do seletor de fase no formulário de jogo. */
-  function opcoesFases(sel) {
-    const fases = [{ id: "grupos", nome: "Fase de Grupos" }].concat(
-      FASES_MATA_MATA.map((f) => ({ id: f.id, nome: f.nome }))
-    );
-    return fases.map((f) =>
-      `<option value="${f.id}" ${f.id === sel ? "selected" : ""}>${escapeHtml(f.nome)}</option>`
-    ).join("");
+  /**
+   * Opções do seletor de fase/chave no formulário de jogo. Cada chave do
+   * mata-mata é uma opção própria, porque é ela que define o slot na árvore.
+   * Chaves já ocupadas por outro jogo aparecem marcadas, para evitar duplicar.
+   */
+  function opcoesFases(sel, idxAtual) {
+    const ocupadas = {};
+    STATE.jogos.forEach((j, i) => {
+      const ch = chaveDoJogo(j);
+      if (ch !== "grupos" && String(i) !== String(idxAtual)) ocupadas[ch] = j;
+    });
+    const grupos = `<option value="grupos" ${sel === "grupos" ? "selected" : ""}>Fase de Grupos</option>`;
+    const chaves = CHAVES.map((c) => {
+      const ocupada = ocupadas[c.id];
+      const aviso = ocupada ? " — já cadastrada" : "";
+      return `<option value="${c.id}" ${c.id === sel ? "selected" : ""}>${escapeHtml(c.nome + aviso)}</option>`;
+    }).join("");
+    return grupos + chaves;
   }
 
   /**
@@ -1881,7 +1986,7 @@
     const gv = (document.getElementById("fj-gv") || {}).value;
     const ambos = String(gm).trim() !== "" && String(gv).trim() !== "";
     const empate = ambos && Number(gm) === Number(gv);
-    const mostrar = IDS_MATA_MATA.indexOf(fase) !== -1 && empate;
+    const mostrar = IDS_CHAVES.indexOf(fase) !== -1 && empate;
     bloco.hidden = !mostrar;
     if (!mostrar) {
       // some da tela = não persiste pênaltis herdados de um estado inválido
@@ -1979,7 +2084,21 @@
 
     const idxTimes = porId();
     const faseEscolhida = (document.getElementById("fj-fase") || {}).value || "grupos";
-    const mataMata = IDS_MATA_MATA.indexOf(faseEscolhida) !== -1;
+    const mataMata = IDS_CHAVES.indexOf(faseEscolhida) !== -1;
+
+    // Cada chave do mata-mata comporta UM jogo. Se já houver outro cadastrado
+    // naquela chave, avisa em vez de criar dois cards no mesmo slot.
+    if (mataMata) {
+      const ocupante = STATE.jogos.findIndex((x, i) =>
+        chaveDoJogo(x) === faseEscolhida && String(i) !== String(idxRaw));
+      if (ocupante !== -1) {
+        const o = STATE.jogos[ocupante];
+        alert("A " + nomeDaChave(faseEscolhida) + " já tem um jogo cadastrado (" +
+          nomeTime(o.mandante) + " × " + nomeTime(o.visitante) +
+          ").\n\nEdite ou exclua aquele jogo, ou escolha outra chave.");
+        return;
+      }
+    }
 
     const jogo = {
       // No mata-mata os times podem ser de grupos diferentes, então o campo

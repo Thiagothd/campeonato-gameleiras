@@ -1462,13 +1462,30 @@ img { max-width: 100%; display: block; }
   padding-bottom: 8px; border-bottom: 2px solid var(--dourado);
 }
 .bracket-jogos { display: flex; flex-direction: column; gap: 10px; }
+.bracket-slot { display: flex; flex-direction: column; justify-content: center; min-width: 0; }
 
 .mm-jogo {
   background: linear-gradient(180deg, var(--verde-850), var(--verde-900));
   border: 1px solid var(--linha-forte); border-radius: 12px;
   padding: 8px; display: flex; flex-direction: column; gap: 4px;
 }
-.mm-jogo--vazio { opacity: .5; border-style: dashed; }
+.mm-jogo--vazio { border-style: dashed; background: rgba(255,255,255,.02); }
+/* etiqueta da chave (Quartas 1, Semifinal 2, Final) dentro do card */
+.mm-chave {
+  font-family: var(--fonte-cond); font-weight: 700; font-size: .68rem;
+  text-transform: uppercase; letter-spacing: .06em;
+  color: var(--texto-fraco); padding: 0 8px 2px;
+}
+/* lado ainda não definido: mostra a vaga prevista, em tom mais discreto */
+.mm-lado--previsto .mm-nome { color: var(--texto-suave); font-weight: 600; }
+.mm-lado--previsto .mm-placar { color: var(--texto-fraco); }
+.mm-slot {
+  flex: 0 0 auto; display: grid; place-items: center;
+  width: 32px; height: 32px; border-radius: 22%;
+  background: rgba(255,255,255,.05); color: var(--texto-fraco);
+  font-family: var(--fonte-cond); font-weight: 700; font-size: .8rem;
+  box-shadow: inset 0 0 0 1px var(--linha);
+}
 .mm-lado {
   display: flex; align-items: center; gap: 8px;
   padding: 6px 8px; border-radius: 8px; min-width: 0;
@@ -1546,12 +1563,25 @@ img { max-width: 100%; display: block; }
 }
 .placar-pen { font-size: .7rem; color: var(--texto-fraco); text-align: center; margin-top: 2px; }
 
-/* Desktop: fluxo horizontal clássico das chaves */
+/* Desktop: funil clássico. As 3 colunas têm a MESMA ALTURA e cada uma
+   distribui seus cards com space-around — assim a Semifinal 1 cai
+   matematicamente no centro entre Quartas 1 e Quartas 2, e a Final no
+   centro entre as duas semis. */
 @media (min-width: 900px) {
-  .bracket { grid-template-columns: repeat(3, 1fr); gap: 24px; align-items: start; }
-  /* semis e final centralizadas verticalmente em relação às quartas */
-  .bracket-col--semifinal .bracket-jogos { justify-content: space-around; height: 100%; padding: 10% 0; }
-  .bracket-col--final .bracket-jogos { justify-content: center; height: 100%; padding: 25% 0; }
+  .bracket {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+    align-items: stretch;          /* colunas com altura igual */
+    min-height: 760px;             /* espaço para os 4 cards de quartas respirarem */
+  }
+  .bracket-col { display: flex; flex-direction: column; }
+  .bracket-jogos {
+    flex: 1;                       /* ocupa toda a altura da coluna */
+    gap: 0;
+  }
+  /* Cada slot pega 1/N da coluna e centra o card: o centro de cada confronto
+     cai no ponto exato do funil, independente da altura do card. */
+  .bracket-slot { flex: 1 1 0; min-height: 0; }
 }
 
 /* =========================================================================
