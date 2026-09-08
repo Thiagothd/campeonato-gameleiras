@@ -1591,8 +1591,13 @@ img { max-width: 100%; display: block; }
     gap: 0;
   }
   /* Cada slot pega 1/N da coluna e centra o card: o centro de cada confronto
-     cai no ponto exato do funil, independente da altura do card. */
-  .bracket-slot { flex: 1 1 0; min-height: 0; }
+     cai no ponto exato do funil, independente da altura do card.
+     min-height: auto (e não 0) é o que importa aqui — garante que o slot
+     NUNCA fique menor que o card real (com data/hora/pênaltis), senão o
+     conteúdo vaza e sobrepõe o slot vizinho. Se os 4 cards das quartas
+     precisarem de mais espaço que os 760px mínimos, a coluna (e as outras
+     duas, esticadas junto pelo grid) só ficam mais altas — sem sobrepor. */
+  .bracket-slot { flex: 1 1 0; min-height: auto; }
 }
 
 /* =========================================================================
