@@ -1511,6 +1511,17 @@ img { max-width: 100%; display: block; }
   background: rgba(244,180,26,.1); border-radius: 6px; padding: 3px 6px;
 }
 
+/* disputa de 3º lugar: fora do funil principal (não decide quem avança,
+   só a colocação), por isso fica numa faixa própria abaixo das 3 colunas
+   — mesma técnica de span da faixa de campeão, logo abaixo. */
+.mm-terceiro {
+  grid-column: 1 / -1;
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
+  margin-top: 8px;
+}
+.mm-terceiro-titulo { border-bottom: none; padding-bottom: 0; text-align: center; }
+.mm-terceiro-jogo { width: min(360px, 100%); }
+
 /* faixa de campeão */
 .mm-campeao {
   grid-column: 1 / -1;

@@ -10,7 +10,7 @@
   "use strict";
 
   const IMG_TIMES = "assets/img/times/";
-  const CACHE_VER = "42"; // troque quando atualizar imagens/CSS/JS (força o navegador a rebaixar)
+  const CACHE_VER = "43"; // troque quando atualizar imagens/CSS/JS (força o navegador a rebaixar)
 
   function comVersao(base) {
     if (!base) return "";
@@ -193,6 +193,8 @@
    * - `vagaA`/`vagaB`: de onde vem cada lado nas quartas (vagas da fase de
    *   grupos). Serve para mostrar o confronto previsto antes do jogo existir.
    * - `de`: nas fases seguintes, as duas chaves que alimentam este confronto.
+   * - `perdedores`: quando true, o confronto pega quem PERDEU nas chaves de
+   *   origem (não quem venceu) — é o caso da disputa de 3º lugar.
    */
   const CHAVES = [
     { id: "quartas1",   fase: "quartas",   nome: "Quartas 1",   vagaA: "1A",  vagaB: "3M2" },
@@ -201,6 +203,7 @@
     { id: "quartas4",   fase: "quartas",   nome: "Quartas 4",   vagaA: "1C",  vagaB: "2A" },
     { id: "semifinal1", fase: "semifinal", nome: "Semifinal 1", de: ["quartas1", "quartas2"] },
     { id: "semifinal2", fase: "semifinal", nome: "Semifinal 2", de: ["quartas3", "quartas4"] },
+    { id: "terceiro",   fase: "terceiro",  nome: "Disputa de 3º Lugar", de: ["semifinal1", "semifinal2"], perdedores: true },
     { id: "final",      fase: "final",     nome: "Final",       de: ["semifinal1", "semifinal2"] },
   ];
   const IDS_CHAVES = CHAVES.map((c) => c.id);
@@ -277,10 +280,11 @@
     if (def.de) {
       return def.de.map((origem) => {
         const jogo = jogoDaChave(origem);
-        const venc = jogo ? vencedorDoJogo(jogo) : "";
-        return venc
-          ? { id: venc, rotulo: nomeTime(venc) }
-          : { rotulo: "Vencedor " + nomeDaChave(origem) };
+        const time = jogo ? (def.perdedores ? perdedorDoJogo(jogo) : vencedorDoJogo(jogo)) : "";
+        const prefixo = def.perdedores ? "Perdedor " : "Vencedor ";
+        return time
+          ? { id: time, rotulo: nomeTime(time) }
+          : { rotulo: prefixo + nomeDaChave(origem) };
       });
     }
 
@@ -322,6 +326,16 @@
       if (pb > pa) return j.visitante;
     }
     return ""; // empate sem pênaltis definidos
+  }
+
+  /**
+   * O time que PERDEU um jogo de mata-mata (o outro lado do vencedor).
+   * Usado na disputa de 3º lugar, que pega os perdedores das semifinais.
+   */
+  function perdedorDoJogo(j) {
+    const venc = vencedorDoJogo(j);
+    if (!venc) return "";
+    return venc === j.mandante ? j.visitante : j.mandante;
   }
 
   function nomeTime(id) {
@@ -537,7 +551,8 @@
   }
 
   /** Um confronto do chaveamento (com placar/pênaltis se já aconteceu). */
-  function confrontoHTML(jogo, idChave) {
+  function confrontoHTML(jogo, idChave, comRotulo) {
+    if (comRotulo === undefined) comRotulo = true;
     const idx = porId();
 
     // Chave ainda sem jogo cadastrado: mostra o confronto PREVISTO no slot,
@@ -551,7 +566,7 @@
           <span class="mm-placar">–</span>
         </div>`).join("");
       return `<div class="mm-jogo mm-jogo--vazio">
-          <div class="mm-chave">${escapeHtml(nomeDaChave(idChave))}</div>
+          ${comRotulo ? `<div class="mm-chave">${escapeHtml(nomeDaChave(idChave))}</div>` : ""}
           ${linhas}
         </div>`;
     }
@@ -576,7 +591,7 @@
     const empateSemPen = feito && !venc;
 
     return `<div class="mm-jogo ${feito ? "mm-jogo--fim" : ""}">
-        <div class="mm-chave">${escapeHtml(nomeDaChave(idChave))}</div>
+        ${comRotulo ? `<div class="mm-chave">${escapeHtml(nomeDaChave(idChave))}</div>` : ""}
         ${lado(jogo.mandante, jogo.golsMandante, jogo.penaltisTimeA)}
         ${lado(jogo.visitante, jogo.golsVisitante, jogo.penaltisTimeB)}
         ${meta.length ? `<div class="mm-meta">${escapeHtml(meta.join(" · "))}</div>` : ""}
@@ -605,7 +620,15 @@
         </div>`;
     }).join("");
 
-    cont.innerHTML = colunas;
+    // Disputa de 3º lugar: pega os perdedores das semifinais, mas não
+    // decide quem avança — por isso fica de fora do funil principal, numa
+    // faixa própria abaixo das 3 colunas (mesma técnica da faixa de campeão).
+    const terceiro = `<div class="mm-terceiro">
+        <h3 class="bracket-fase mm-terceiro-titulo">${escapeHtml(nomeDaChave("terceiro"))}</h3>
+        <div class="mm-terceiro-jogo">${confrontoHTML(jogoDaChave("terceiro"), "terceiro", false)}</div>
+      </div>`;
+
+    cont.innerHTML = colunas + terceiro;
     renderClassificados();
     renderCampeao();
   }
